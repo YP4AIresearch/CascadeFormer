@@ -31,7 +31,6 @@ def load_mat_pose(mat_path: str, drop_occluded: bool = True):
         x = np.where(vis, x, 0.)
         y = np.where(vis, y, 0.)
     poses = np.stack([x, y], axis=-1)          # (T, 13, 2)
-    poses = poses.reshape(poses.shape[0], -1)  # (T, 26)
     return poses.astype(np.float32), int(mat['train']), str(mat['action'])
 
 

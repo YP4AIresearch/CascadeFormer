@@ -170,6 +170,11 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 30 | 73.01% |
 | 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 73.28% |
 | 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **73.97%** |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **200** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 20 | 71.60% |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **200** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 72.67% |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **200** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **73.22%** |
+| 30%, 64+1.0 | linear | 512 | 8 | **8** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 72.78% |
+| 30%, 64+1.0 | linear | 512 | 8 | **8** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **73.07%** |
 
 
 | <tr><td colspan="11" align="center"> cross-view evaluation </td></tr> |

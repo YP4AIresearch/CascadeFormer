@@ -46,7 +46,7 @@ def main():
     # transformer parameters
     hidden_size = 512   # 256 -> 512 -> 768
     n_heads = 8
-    num_layers = 8      # 4 -> 8 -> 12 -> 16
+    num_layers = 12      # 4 -> 8 -> 12 -> 16
     print(f"hidden_size: {hidden_size}")
     print(f"n_heads: {n_heads}")
     print(f"num_layers: {num_layers}")
@@ -127,6 +127,9 @@ def main():
     print("=" * 100)
     print("=" * 100)
     print("=" * 100)
+
+    return
+
 
     # load T1 models
     three_d = True
