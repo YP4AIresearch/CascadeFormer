@@ -70,7 +70,7 @@ corresponding model checkpoints:
 
 1. Penn Action: **94.10%** [google drive](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS)
 2. N-UCLA: **91.16%** [google drive](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [google drive](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) 
-3. NTU/CS: **72.22%** is not good enough; running: CUDA_VISIBLE_DEVICES=0 taskset -c 26-35 python3 baseline/action_recognition/cascadeformer_1_1/joint/ntu_60_own/NTU_main.py --pretrain --num_epochs 500 > NTU_1_1_pretrain.txt 2>&1 &
+3. NTU/CS: **73.97%** is not good enough; However, significant 🔥 efficiency boost 🔥 using ***trimmed-uniform random sampling*** adapted from SkateFormer - MUCH faster to get results!
 4. NTU/CV: TBD
 
 ## CascadeFormer 1.2 (spatial-transformer enhanced)

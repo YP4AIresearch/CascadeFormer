@@ -128,9 +128,6 @@ def main():
     print("=" * 100)
     print("=" * 100)
 
-    return
-
-
     # load T1 models
     three_d = True
     t1 = load_T1(

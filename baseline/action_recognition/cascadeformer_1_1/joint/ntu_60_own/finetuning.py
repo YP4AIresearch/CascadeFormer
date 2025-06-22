@@ -5,7 +5,6 @@ from tqdm import tqdm
 from typing import Tuple
 from typing import List
 from NTU_pretraining import BaseT1
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 def load_T1(model_path: str, num_joints: int = 13, three_d: bool = False, d_model: int = 128, nhead: int = 4, num_layers: int = 2, freeze: bool = True,
                 device: str = 'cuda' if torch.cuda.is_available() else 'cpu') -> BaseT1:
@@ -128,12 +127,14 @@ def finetuning(
     optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
     
     # use CosineAnnealingWarmRestarts scheduler instead of CosineAnnealingLR
-    scheduler = CosineAnnealingWarmRestarts(
-        optimizer,
-        T_0=10,      
-        T_mult=2,
-        eta_min=1e-6
-    )
+    # scheduler = CosineAnnealingWarmRestarts(
+    #     optimizer,
+    #     T_0=10,      
+    #     T_mult=2,
+    #     eta_min=1e-6
+    # )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+    
 
     criterion = nn.CrossEntropyLoss()
 
@@ -174,12 +175,14 @@ def finetuning(
             correct += (logits.argmax(dim=1) == labels).sum().item()
             total += labels.size(0)
 
-            scheduler.step(epoch + i / len(train_loader))
+            #cheduler.step(epoch + i / len(train_loader))
 
         train_acc = correct / total
         avg_loss = total_loss / total
         train_losses.append(avg_loss)
         train_accuracies.append(train_acc) 
+
+
 
         # Validation
         t1.eval()
@@ -207,12 +210,12 @@ def finetuning(
                 val_total += labels.size(0)
 
         val_acc = val_correct / val_total
-        val_avg_loss = val_total_loss / total
+        val_avg_loss = val_total_loss / val_total
 
         val_losses.append(val_avg_loss)
         val_accuracies.append(val_acc)
 
-        #scheduler.step(epoch)
+        scheduler.step() # Step the scheduler after each epoch
         current_lr = optimizer.param_groups[0]['lr']
         print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
 

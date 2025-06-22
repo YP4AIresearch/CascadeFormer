@@ -162,9 +162,14 @@ cross-subject evaluation:
 | <tr><td colspan="11" align="center"> CascadeFormer 1.1 with data augmentation </td></tr> |
 | 30% | linear | 512 | 8 | **12** | no | 1e-4 | 100 | 1e-5, wd=1e-4 | 100 | 70.68% |
 | <tr><td colspan="11" align="center"> CascadeFormer 1.1 with trimmed-uniform random sampling  </td></tr> |
-| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | 50 | 3e-5, wd=1e-2, CosineAnnealingWarmRestarts, epoch-level | 50 | **72.22%** |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | 50 | 3e-5, wd=1e-2, CosineAnnealingWarmRestarts, epoch-level | 50 | 72.22% |
 | 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | 50 | 3e-5, wd=1e-2, CosineAnnealingWarmRestarts, batch-level | 10 | 71.84% |
-
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingWarmRestarts, batch-level | 10 | 71.18% |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingWarmRestarts, batch-level | 20 | 70.33% |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 20 | 72.08% |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 30 | 73.01% |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 73.28% |
+| 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **73.97%** |
 
 
 | <tr><td colspan="11" align="center"> cross-view evaluation </td></tr> |
