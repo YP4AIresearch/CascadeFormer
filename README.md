@@ -1,10 +1,7 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
-The base (temporal) transformer:
-
-<img src="docs/base_transformer.png" width="200" height="200">
-
 Positional embeddings in T1 are **temporal** positions (encode the **frame numbers**) - **indispensable**!
+
 significant 🔥 efficiency boost 🔥 on NTU using ***trimmed-uniform random sampling*** adapted from SkateFormer - MUCH faster to get results!
 
 ## Model scale summary
