@@ -4,18 +4,6 @@ Positional embeddings in T1 are **temporal** positions (encode the **frame numbe
 
 significant 🔥 efficiency boost 🔥 on NTU using ***trimmed-uniform random sampling*** adapted from SkateFormer - MUCH faster to get results!
 
-## Model scale summary
-
-| version | hidden size, layers, heads | total # parameters |
-| ------- | ------------------ | ---------------- |
-| CascadeFormer 1.1 | 256, 4, 8 | 11.0M |
-| CascadeFormer 1.1 | 256, 4, 8 | 11.3M |
-| CascadeFormer 1.2 | 256, 4, 8 | 12.6M |
-
-SoTA:
-
-![alt text](docs/reference_scale.png)
-
 ## CascadeFormer 1.0
 
 Pretraining:
@@ -43,8 +31,8 @@ Cascading Finetuning:
 corresponding model checkpoints:
 
 1. Penn Action: **94.66%** [google drive](https://drive.google.com/drive/folders/1Za50ZE9ZEKdEps_ZE-JIbatTpLuMW83k)
-2. N-UCLA: **88.79%** is not good enough
-3. NTU/CS: **75.22%** is not good enough
+2. N-UCLA: **88.79%**
+3. NTU/CS: **75.22%**
 4. NTU/CV: TBD
 
 ## CascadeFormer 1.1 (convolution enhanced)
@@ -68,7 +56,7 @@ corresponding model checkpoints:
 
 1. Penn Action: **94.10%** [google drive](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS)
 2. N-UCLA: **91.16%** [google drive](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [google drive](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) 
-3. NTU/CS: **73.97%** is not good enough
+3. NTU/CS: **74.10%**
 4. NTU/CV: TBD
 
 ## CascadeFormer 1.2 (spatial-transformer enhanced)
@@ -131,14 +119,14 @@ Cascading Finetuning:
 
 | dataset | #videos | #actions | dimension | #joints | outperform SoTA? |
 | ------- | ------- | -------- | --------- | ---------- | ------- |
-| Penn Action | 2,326 | 15 | 2D | 13 | 93.4% (HDM-BG) |
+| Penn Action | 2,326 | 15 | 2D | 13 | **92.32%** = 93.4% (HDM-BG) |
 | N-UCLA | 1,494 | 12 | 3D | 20 | 98.3% (SkateFormer) |
 | NTU/CS | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
 | NTU/CV | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
 
 corresponding model checkpoints:
 
-1. Penn Action: 74.34% (overfitting!)
+1. Penn Action: **92.32%** [google drive](https://drive.google.com/drive/folders/1cYQMhedWKBm93L9RWSEAj2HYGhdlucKl)
 2. N-UCLA: TBD
 3. NTU/CS: TBD
 4. NTU/CV: TBD

@@ -92,7 +92,7 @@ def main():
 
     # Set the device
 
-    hidden_size = 512 # 256, 512
+    hidden_size = 768 # 256, 512, 768
     n_heads = 8
     num_layers = 8    # 4, 8, 12
     device = 'cuda' if torch.cuda.is_available() else 'cpu'

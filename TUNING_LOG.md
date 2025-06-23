@@ -102,6 +102,20 @@ The complete experiment tuning logs:
 | 30% | linear | 256 | 8 | 4 | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 120 | **94.10%** |
 | 30% | linear | 256 | 8 | 4 | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 200 | 94.01% |
 
+
+
+| masked pretraining | decoder | d_model | n_head | num_layers | freeze T1? | T1-lr | #epochs | T2-lr (ft-lr) | #epochs | clf-acc |
+|---------------|---------|-----------|----------|----------|----------|--------|----------|-------------|--------|---------|
+| <tr><td colspan="11" align="center"> CascadeFormer 2.0 (interleaving spatial-temporal attention)  </td></tr> |
+| 30% | linear | **832** | 8 | **2** | no | 1e-4 | 50 | 1e-4, wd=1e-2 | 50 | 83.15% - overfitting! |
+| 30% | linear | **832** | 8 | **2** | no | 1e-4 | 100 | 1e-4, wd=1e-2 | 70 | 91.29% |
+| 30% | linear | **832** | 8 | **2** | no | 1e-4 | 100 | 1e-4, wd=1e-2 | 80 | **92.32%** |
+| 30% | linear | **832** | 8 | **2** | no | 1e-4 | 100 | 1e-4, wd=1e-2 | 90 | 90.73% |
+| 30% | linear | **832** | 8 | **2** | no | 1e-4 | 100 | 1e-4, wd=1e-2 | 100 | 91.67% |
+| 30% | linear | **832** | 8 | **2** | no | 1e-4 | 200 | 1e-4, wd=1e-2 | 100 | 86.05% - overfitting! |
+| 30% | linear | **832** | 8 | **2** | no | 1e-4 | 200 | 1e-4, wd=1e-2 | 200 | 86.05% - overfitting! |
+
+
 ## NTU RGB+D 60
 
 batch-level padding OR fixed-length sequence
@@ -174,8 +188,10 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **200** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 72.67% |
 | 30%, 64+1.0 | linear | 512 | 8 | **12** | no | 1e-4 | **200** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **73.22%** |
 | 30%, 64+1.0 | linear | 512 | 8 | **8** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 72.78% |
-| 30%, 64+1.0 | linear | 512 | 8 | **8** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **73.07%** |
-
+| 30%, 64+1.0 | linear | 512 | 8 | **8** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.07% |
+| <tr><td colspan="11" align="center"> a larger hidden size/latent space?! </td></tr> |
+| 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 300 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **running** |
+| 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 300 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 300 | **74.10%** |
 
 | <tr><td colspan="11" align="center"> cross-view evaluation </td></tr> |
 | no | linear | 256 | 8 | 4 | no | 1e-4 | 300 | 1e-5, wd=1e-4 | 100 | Need to run one here... |
@@ -258,9 +274,6 @@ Use SkateFormer data loader instead of my own data loader because:
 | <tr><td colspan="11" align="center"> try **MORE** repeat  </td></tr> |
 | 30%, **p=0.1**, repeat=15 | linear | 256 | 8 | 4 | no | 1e-4 | 100 | 3e-5, wd=1e-4, cosine + warmup | 50 | 85.13% |
 | 30%, **p=0.1**, repeat=15 | linear | 256 | 8 | 4 | no | 1e-4 | 100 | 3e-5, wd=1e-4, cosine + warmup | 100 | 85.99% |
-| <tr><td colspan="11" align="center"> try **NO** regularization  </td></tr> |
-| 30%, **p=0.0**, repeat=10 | linear | 256 | 8 | 4 | no | 1e-4 | 100 | 3e-5, wd=1e-4, cosine + warmup | 100 | TBD |
-
 
 ### save the best checkpoint
 

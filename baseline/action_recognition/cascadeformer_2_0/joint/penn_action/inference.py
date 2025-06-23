@@ -106,9 +106,9 @@ def main():
     # get the number of classes from the root_dir by taking the trailing number
     batch_size = args.batch_size
     device = args.device
-    hidden_size = 208
-    n_heads = 4
-    num_layers = 4
+    hidden_size = 832
+    n_heads = 8
+    num_layers = 2
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     print("=" * 50)
@@ -137,7 +137,7 @@ def main():
         print("************Freezing all layers")
         t1 = load_T1("action_checkpoints/Penn_pretrained.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
     else:
-        t1 = load_T1("action_checkpoints/Penn_finetuned_T1.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
+        t1 = load_T1("action_checkpoints/Penn_finetuned_T1.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device, freeze=False)
         print(f"************Unfreezing layers: {unfreeze_layers}")
     
     t2 = load_T2("action_checkpoints/Penn_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
