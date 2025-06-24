@@ -1,8 +1,15 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
-Positional embeddings in T1 are **temporal** positions (encode the **frame numbers**) - **indispensable**!
+## Important Updates
 
 significant 🔥 efficiency boost 🔥 on NTU using ***trimmed-uniform random sampling*** adapted from SkateFormer - MUCH faster to get results!
+
+potential strategies (other than optimizing the model architecture) to bridge the **performance** gap for NTU:
+
+1. dropout (0.1 for T1, 0.1 for T2, 0.5 for classification head) [already added, running now]
+2. larger hidden size [256 -> 512 -> 768; haven't tried 1024]
+3. label smoothing [not tried yet]
+4. tune "trimmed-uniform random sampling" [now only 64 frames, no trimmed yet]
 
 ## CascadeFormer 1.0
 
