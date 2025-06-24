@@ -6,8 +6,8 @@ significant 🔥 efficiency boost 🔥 on NTU using ***trimmed-uniform random sa
 
 potential strategies (other than optimizing the model architecture) to bridge the **performance** gap for NTU:
 
-1. dropout (0.1 for T1, 0.1 for T2, 0.5 for classification head) [already added, running now]
-2. larger hidden size [256 -> 512 -> 768; haven't tried 1024]
+1. dropout (0.1 for T1, 0.1 for T2, 0.5 for classification head) [already added!]
+2. larger hidden size [256 -> 512 -> 768; running 1024]
 3. label smoothing [not tried yet]
 4. tune "trimmed-uniform random sampling" [now only 64 frames, no trimmed yet]
 
@@ -111,16 +111,16 @@ their results:
 Our (maybe preliminary) design:
 
 1. initial data: (B, T, J, D)
-2. joint embedding🔥: **instead of (B, T, d_model), use (B, T, J, d_model // J)** - project into a high dimensional space for each specific joint
+2. joint embedding🔥: **instead of (B, T, d_model), use (B, T, J, d_model // J)** - embedding for each specific joint!
 3. spatial attention: attention on (B*T, J, d_model // J) - attending joints, don't care which frame it is in
 4. temporal attention: attention on (B * J, T, d_model // J) - attending frames, don't care which joint it is
-5. flatten (B, T, J, d_model // J) - (B, T, d_model) for autoencoding; convert it back to (B, T, J, d_model // J) in T2
+5. flatten (B, T, J, d_model // J) - (B, T, d_model) for autoencoding (reconstruction head); convert it back to (B, T, J, d_model // J) to proceed in T2
 
 Pretraining:
-![alt text](docs/cascadeformer_1_3_pretrain.png)
+![alt text](docs/cascadeformer_2_0_pretrain.png)
 
 Cascading Finetuning:
-![alt text](docs/cascadeformer_1_3_finetune.png)
+![alt text](docs/cascadeformer_2_0_finetune.png)
 
 ### result leaderboard - CascadeFormer 2.0
 

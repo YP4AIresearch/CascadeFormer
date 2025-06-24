@@ -193,7 +193,7 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 300 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **73.48%** |
 | 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 300 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 300 | **74.10%** |
 | <tr><td colspan="11" align="center"> add dropout: 0.1 for T1, 0.1 for T2, 0.5 for head </td></tr> |
-| 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **running** |
+| 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.85% |
 
 ## Baseline - Experiment (NW-UCLA, cross-view)
 
