@@ -126,11 +126,10 @@ Cascading Finetuning:
 
 corresponding model checkpoints:
 
-1. Penn Action: **92.32%** [google drive](https://drive.google.com/drive/folders/1cYQMhedWKBm93L9RWSEAj2HYGhdlucKl)
+1. Penn Action: **92.32%** [google drive](https://drive.google.com/drive/folders/1cYQMhedWKBm93L9RWSEAj2HYGhdlucKl) - for Penn Action at least, it's very sensitive to overfitting! (sometimes fail to converge too...)
 2. N-UCLA: TBD
 3. NTU/CS: TBD
 4. NTU/CV: TBD
-
 
 ## Leaderboard - CascadeFormer 3.0
 
