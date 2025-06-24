@@ -41,7 +41,7 @@ class BaseT1(nn.Module):
         nn.init.trunc_normal_(self.pos_embedding, std=0.02)
 
         # Transformer encoder
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=0.1, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # Reconstruction head to go from d_model → J*D

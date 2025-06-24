@@ -190,11 +190,10 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | 512 | 8 | **8** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 72.78% |
 | 30%, 64+1.0 | linear | 512 | 8 | **8** | no | 1e-4 | **100** | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.07% |
 | <tr><td colspan="11" align="center"> a larger hidden size/latent space?! </td></tr> |
-| 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 300 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **running** |
+| 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 300 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **73.48%** |
 | 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 300 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 300 | **74.10%** |
-
-| <tr><td colspan="11" align="center"> cross-view evaluation </td></tr> |
-| no | linear | 256 | 8 | 4 | no | 1e-4 | 300 | 1e-5, wd=1e-4 | 100 | Need to run one here... |
+| <tr><td colspan="11" align="center"> add dropout: 0.1 for T1, 0.1 for T2, 0.5 for head </td></tr> |
+| 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | **running** |
 
 ## Baseline - Experiment (NW-UCLA, cross-view)
 

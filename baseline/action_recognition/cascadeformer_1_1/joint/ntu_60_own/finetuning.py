@@ -53,7 +53,7 @@ class BaseT2(nn.Module):
     def __init__(self, d_model=128, nhead=4, num_layers=2):
         super(BaseT2, self).__init__()
         self.encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True),
+            nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=0.1, batch_first=True),
             num_layers=num_layers
         )
     
@@ -71,8 +71,9 @@ class GaitRecognitionHead(nn.Module):
         A simple linear head for gait recognition.
         The model consists of a linear layer that maps the output of the transformer to the number of classes.
     """
-    def __init__(self, input_dim, num_classes):
+    def __init__(self, input_dim, num_classes, dropout=0.5):
         super().__init__()
+        self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(input_dim, num_classes)
 
     def forward(self, x):
