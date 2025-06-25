@@ -2,10 +2,14 @@
 
 ## Important Updates
 
+NTU Grid search summary, for CascadeFormer 1.1 (with convolution):
+
+1. layers (fix hidden size = 512, heads = 8): 8 layers: 73.07%; 12 layers: 73.97%
+2. hidden size (fix layers = 8, heads = 8): 512: 73.97%; 768: 73.48%; 1024: 73.61%
+
+
 potential strategies (other than optimizing the model architecture) to bridge the **performance** gap for NTU:
 
-1. dropout (0.1 for T1, 0.1 for T2, 0.5 for classification head) [already added!]
-2. larger hidden size [256 -> 512 -> 768; running 1024]
 3. label smoothing [not tried yet]
 4. tune "trimmed-uniform random sampling" [now only 64 frames, no trimmed yet]
 
