@@ -9,7 +9,7 @@ Case study for CascadeFormer 1.1 (with convolution):
 
 ## CascadeFormer 1.X series
 
-![alt text](docs/CascadeFormer_1_0.png)
+![alt text](docs/CascadeFormer_1.png)
 
 ### leaderboard - CascadeFormer 1.0
 
@@ -48,17 +48,7 @@ Case study for CascadeFormer 1.1 (with convolution):
 
 ## CascadeFormer 2.0 (interleaved spatial–temporal attention inspired by [IIP-Transformer](https://arxiv.org/abs/2110.13385) and [ST-TR](https://arxiv.org/abs/2012.06399))  
 
-Pretraining:
-![alt text](docs/cascadeformer_2_0_pretrain.png)
-
-Cascading Finetuning:
-![alt text](docs/cascadeformer_2_0_finetune.png)
-
-1. initial data: (B, T, J, D)
-2. joint embedding🔥: **instead of (B, T, d_model), use (B, T, J, d_model // J)** - embedding for each specific joint!
-3. spatial attention: attention on (B*T, J, d_model // J) - attending joints, don't care which frame it is in
-4. temporal attention: attention on (B * J, T, d_model // J) - attending frames, don't care which joint it is
-5. flatten (B, T, J, d_model // J) - (B, T, d_model) for autoencoding (reconstruction head); convert it back to (B, T, J, d_model // J) to proceed in T2
+![alt text](docs/CascadeFormer_2.png)
 
 ### result leaderboard - CascadeFormer 2.0
 
