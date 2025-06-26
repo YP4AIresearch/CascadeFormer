@@ -196,6 +196,9 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **768** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.85% |
 | <tr><td colspan="11" align="center"> hidden size 1024 </td></tr> |
 | 30%, 64+1.0 | linear | **1024** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.61% |
+| <tr><td colspan="11" align="center"> CascadeFormer 2.0 </td></tr> |
+| 30%, 64+1.0 | linear | **800** | 8 | **2** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 54.48% |
+
 
 
 

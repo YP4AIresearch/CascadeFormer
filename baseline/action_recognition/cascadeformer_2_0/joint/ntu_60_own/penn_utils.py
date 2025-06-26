@@ -3,13 +3,9 @@ import numpy as np
 import torch
 from scipy.io import loadmat
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import random_split
-from torch.utils.data import Subset
 from sklearn.model_selection import train_test_split
-from collections import defaultdict
 import os
 import glob
-from tqdm import tqdm
 from typing import List, Tuple, Dict
 
 NUM_JOINTS_PENN = 13
@@ -130,43 +126,3 @@ def collate_fn_inference(batch):
     batch = pad_sequence(batch, batch_first=True, padding_value=0.0)
     labels = torch.stack(labels, dim=0)
     return batch, labels
-
-
-# if __name__ == "__main__":    
-#     set_seed(42)
-#     root = "Penn_Action/"
-
-#     train_seq, train_lbl, test_seq, test_lbl = build_penn_action_lists(root)
-#     train_seq, train_lbl, val_seq, val_lbl = split_train_val(train_seq, train_lbl, val_ratio=0.15)
-
-#     train_ds = ActionRecognitionDataset(train_seq, train_lbl)
-#     val_ds   = ActionRecognitionDataset(val_seq, val_lbl)
-#     test_ds  = ActionRecognitionDataset(test_seq, test_lbl)
-    
-#     # data loader
-#     train_loader = torch.utils.data.DataLoader(
-#         train_ds,
-#         batch_size=16,
-#         shuffle=True,
-#         collate_fn=collate_fn_batch_padding
-#     )
-#     val_loader = torch.utils.data.DataLoader(
-#         val_ds,
-#         batch_size=16,
-#         shuffle=False,
-#         collate_fn=collate_fn_batch_padding
-#     )
-#     test_loader = torch.utils.data.DataLoader(
-#         test_ds,
-#         batch_size=16,
-#         shuffle=False,
-#         collate_fn=collate_fn_batch_padding
-#     )
-
-#     # check the data loader
-#     print("Train dataset size:", len(train_loader.dataset))
-#     print("Example batch shape:", next(iter(train_loader))[0].shape)
-#     print("Validation dataset size:", len(val_loader.dataset))
-#     print("Example batch shape:", next(iter(val_loader))[0].shape)
-#     print("Test dataset size:", len(test_loader.dataset))
-#     print("Example batch shape:", next(iter(test_loader))[0].shape)
