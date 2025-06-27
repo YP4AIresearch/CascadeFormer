@@ -16,6 +16,10 @@
 
 pending - separate T1 encoders, fuse features after T1 [under discussion]
 
+### SoTA of NTU
+
+![alt text](docs/NTU_SoTA.png)
+
 ## CascadeFormer 1.X series
 
 ![alt text](docs/CascadeFormer_1.png)
@@ -54,6 +58,16 @@ pending - separate T1 encoders, fuse features after T1 [under discussion]
 | N-UCLA | 1,494 | 12 | 3D | 20 | **90.73%** < 98.3% (SkateFormer) [google drive](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) |
 | NTU/CS | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
 | NTU/CV | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
+
+### leaderboard - CascadeFormer 1.3
+
+| dataset | #videos | #actions | dimension | #joints | outperform SoTA? |
+| ------- | ------- | -------- | --------- | ---------- | ------- |
+| Penn Action | 2,326 | 15 | 2D | 13 | 93.4% (HDM-BG) |
+| N-UCLA | 1,494 | 12 | 3D | 20 | 98.3% (SkateFormer) |
+| NTU/CS | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
+| NTU/CV | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
+
 
 ## CascadeFormer 2.0 (interleaved spatial–temporal attention inspired by [IIP-Transformer](https://arxiv.org/abs/2110.13385) and [ST-TR](https://arxiv.org/abs/2012.06399))  
 
