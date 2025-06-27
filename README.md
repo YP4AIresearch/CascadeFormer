@@ -1,16 +1,20 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
-## NTU Grid search summary
+## Case study for CascadeFormer 1.1 (with convolution):
 
-Case study for CascadeFormer 1.1 (with convolution):
+### Tuning the model size won't help...
 
 1. layers (fix hidden size = 512, heads = 8): 8 layers: 73.07%; 12 layers: 73.97%
 2. hidden size (fix layers = 8, heads = 8): 512: 73.97%; 768: 73.48%; 1024: 73.61%
 
-Strong data augmentation:
+### Strong data augmentation won't help...
 
 1. 100% data augmentation instead of just 10%?
-2. 74.10% -> ?
+2. 73.61% -> 73.33%...
+
+### Multi-stream input?
+
+pending - separate T1 encoders, fuse features after T1 [under discussion]
 
 ## CascadeFormer 1.X series
 
