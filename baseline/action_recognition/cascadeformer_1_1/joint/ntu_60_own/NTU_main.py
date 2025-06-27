@@ -62,13 +62,12 @@ def main():
     # load the dataset
     import time
     t_start = time.time()
-    all_seq, all_lbl = load_cached_data("ntu_cache_train_sub_64_10.npz")    
+    all_seq_clean, all_lbl_clean = load_cached_data('ntu_cache_train_sub_64_10_augmented.npz')
+    train_seq, train_lbl, val_seq, val_lbl = split_train_val(all_seq_clean, all_lbl_clean, val_ratio=0.20)
     t_end = time.time()
-    print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")    
-    train_seq, train_lbl, val_seq, val_lbl = split_train_val(all_seq, all_lbl, val_ratio=0.15)
+    print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")
     train_dataset = ActionRecognitionDataset(train_seq, train_lbl)
     val_dataset = ActionRecognitionDataset(val_seq, val_lbl)
-
 
     # get the number of classes
     num_classes = len(set(train_lbl))

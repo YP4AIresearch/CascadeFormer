@@ -102,7 +102,7 @@ def main():
     print("=" * 50)
 
     # load the dataset
-    test_seq, test_lbl = load_cached_data("ntu_cache_test_sub_64_10.npz")    
+    test_seq, test_lbl = load_cached_data('ntu_cache_test_sub_64_10.npz')    
     test_dataset = ActionRecognitionDataset(test_seq, test_lbl)
     
     # get the number of classes

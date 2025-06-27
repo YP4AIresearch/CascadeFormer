@@ -7,6 +7,11 @@ Case study for CascadeFormer 1.1 (with convolution):
 1. layers (fix hidden size = 512, heads = 8): 8 layers: 73.07%; 12 layers: 73.97%
 2. hidden size (fix layers = 8, heads = 8): 512: 73.97%; 768: 73.48%; 1024: 73.61%
 
+Strong data augmentation:
+
+1. 100% data augmentation instead of just 10%?
+2. 74.10% -> ?
+
 ## CascadeFormer 1.X series
 
 ![alt text](docs/CascadeFormer_1.png)

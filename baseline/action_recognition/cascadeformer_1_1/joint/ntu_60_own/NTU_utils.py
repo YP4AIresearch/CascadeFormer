@@ -6,9 +6,7 @@ from sklearn.model_selection import train_test_split
 from base_dataset import ActionRecognitionDataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import torch
 import random
-from torch.nn.utils.rnn import pad_sequence
 
 NUM_JOINTS_NTU = 25
 OFFICIAL_XSUB_TRAIN_SUBJECTS = [1, 2, 4, 5, 8, 9, 13, 14, 15, 16, 17, 18, 19, 25, 27, 28, 31, 34, 35, 38]
@@ -22,11 +20,7 @@ def normalize_scale(skeleton: np.ndarray) -> np.ndarray:
     scale = np.linalg.norm(skeleton, axis=-1).max() + 1e-8
     return skeleton / scale
 
-def add_gaussian_noise(sequence: np.ndarray, std=0.01) -> np.ndarray:
-    noise = np.random.normal(0, std, sequence.shape)
-    return sequence + noise
-
-def random_rotation(sequence: np.ndarray, max_angle=10) -> np.ndarray:
+def random_rotation(sequence: np.ndarray, max_angle=15) -> np.ndarray:
     angle = np.deg2rad(np.random.uniform(-max_angle, max_angle))
     cos, sin = np.cos(angle), np.sin(angle)
     R = np.array([
@@ -36,21 +30,13 @@ def random_rotation(sequence: np.ndarray, max_angle=10) -> np.ndarray:
     ])
     return np.einsum('tjd,dk->tjk', sequence, R)
 
-def random_scaling(sequence: np.ndarray, scale_range=(0.9, 1.1)) -> np.ndarray:
+def random_scaling(sequence: np.ndarray, scale_range=(0.8, 1.2)) -> np.ndarray:
     scale = np.random.uniform(*scale_range)
     return sequence * scale
 
-def random_frame_dropout(sequence: np.ndarray, drop_prob=0.1) -> np.ndarray:
-    T = sequence.shape[0]
-    mask = np.random.rand(T) > drop_prob
-    return sequence[mask]
-
-def temporal_crop(sequence: np.ndarray, crop_len=50) -> np.ndarray:
-    T = sequence.shape[0]
-    if T <= crop_len:
-        return sequence
-    start = np.random.randint(0, T - crop_len)
-    return sequence[start:start + crop_len]
+def add_gaussian_noise(sequence: np.ndarray, std=0.01) -> np.ndarray:
+    noise = np.random.normal(0, std, sequence.shape)
+    return sequence + noise
 
 def temporal_jitter(sequence: np.ndarray, max_jitter=5) -> np.ndarray:
     T = sequence.shape[0]
@@ -58,26 +44,22 @@ def temporal_jitter(sequence: np.ndarray, max_jitter=5) -> np.ndarray:
     jitter = np.clip(np.arange(T) + jitter, 0, T - 1)
     return sequence[jitter]
 
+def temporal_crop(sequence: np.ndarray, crop_len=64) -> np.ndarray:
+    T = sequence.shape[0]
+    if T <= crop_len:
+        return sequence
+    start = np.random.randint(0, T - crop_len)
+    return sequence[start:start + crop_len]
 
-def collate_fn_batch_padding(batch):
-    """
-    a collate function for DataLoader that pads sequences to the maximum length in the batch.
-    
-    Returns:
-      padded_seqs: (B, T_max, D) tensor
-      labels: (B,) or (B, something)
-      lengths: list of original sequence lengths
-    """
-    sequences, labels = zip(*batch)    
-    padded_seq = pad_sequence(sequences, batch_first=True, padding_value=0.0)
-    labels = torch.stack(labels, dim=0)
-    return padded_seq, labels
-
-def collate_fn_finetuning(batch):
-    batch, labels = zip(*batch)
-    batch = pad_sequence(batch, batch_first=True, padding_value=0.0)
-    labels = torch.stack(labels, dim=0)
-    return batch, labels
+def transform_sequence(sequence):
+    sequence = random_rotation(sequence)
+    sequence = random_scaling(sequence)
+    sequence = add_gaussian_noise(sequence)
+    if np.random.rand() < 0.5:
+        sequence = temporal_jitter(sequence)
+    if np.random.rand() < 0.5:
+        sequence = temporal_crop(sequence)
+    return normalize_scale(sequence).astype(np.float32)
 
 def read_ntu_skeleton_file(filepath: str, num_joints: int = NUM_JOINTS_NTU, T_out: int = 64, p: float = 1.0) -> np.ndarray:
     """
@@ -151,7 +133,8 @@ def build_ntu_skeleton_lists_xsub(
     skeleton_root: str,
     is_train: bool = True,
     train_subjects: List[int] = OFFICIAL_XSUB_TRAIN_SUBJECTS,
-    num_joints: int = NUM_JOINTS_NTU
+    num_joints: int = NUM_JOINTS_NTU,
+    augment: bool = True
 ) -> Tuple[List[np.ndarray], List[int]]:
     sequences, labels = [], []
 
@@ -163,37 +146,30 @@ def build_ntu_skeleton_lists_xsub(
             continue
 
         action_idx = int(filename[17:20]) - 1
-        skeleton = read_ntu_skeleton_file(filepath, num_joints)
-        hip = skeleton[:, 0:1, :]  # shape: (T, 1, 3)
-        skeleton = skeleton - hip  # shape: (T, 25, 3) - (T, 1, 3) → (T, 25, 3)
 
-        # ADD NORMALIZATION
+
+        """
+            Here, start reading data + apply augmentations
+        """
+        skeleton = read_ntu_skeleton_file(filepath, num_joints)
+        skeleton = skeleton - skeleton[:, 0:1, :] # hip centering
+
+        # always apply normalization
         skeleton = normalize_scale(skeleton)
         skeleton = skeleton.astype(np.float32)
 
         # HAHA! LET'S DO SOME AUGMENTATIONS
-        if is_train:
-            # FIXME: WE CAN TUNE THIS
-            threshold = 0.1
-            if np.random.rand() < threshold:
-                skeleton = add_gaussian_noise(skeleton, std=0.01).astype(np.float32)
-            if np.random.rand() < threshold:
-                skeleton = random_rotation(skeleton, max_angle=10).astype(np.float32)
-            if np.random.rand() < threshold:
-                skeleton = random_scaling(skeleton, scale_range=(0.9, 1.1)).astype(np.float32)
-            # if np.random.rand() < threshold:
-            #     skeleton = random_frame_dropout(skeleton, drop_prob=0.1).astype(np.float32)
-            # if np.random.rand() < threshold:
-            #     skeleton = temporal_crop(skeleton, crop_len=50).astype(np.float32)
-            # if np.random.rand() < threshold:
-            #     skeleton = temporal_jitter(skeleton, max_jitter=5).astype(np.float32)
+        if augment and is_train:
+            skeleton = transform_sequence(skeleton)
 
         sequences.append(skeleton)
         labels.append(action_idx)
 
     # cache them
-    if is_train:
-        save_cached_data(sequences, labels, path="ntu_cache_train_sub_64_10.npz")
+    if is_train and augment:
+        save_cached_data(sequences, labels, path="ntu_cache_train_sub_64_10_augmented.npz")
+    elif is_train and not augment:
+        save_cached_data(sequences, labels, path="ntu_cache_train_sub_64_10_validation.npz")
     else:
         save_cached_data(sequences, labels, path="ntu_cache_test_sub_64_10.npz")
 
@@ -203,7 +179,8 @@ def build_ntu_skeleton_lists_xview(
     skeleton_root: str,
     is_train: bool = True,
     train_cameras: List[int] = OFFICIAL_XVIEW_TRAIN_CAMERAS,
-    num_joints: int = NUM_JOINTS_NTU
+    num_joints: int = NUM_JOINTS_NTU,
+    augment: bool = True
 ) -> Tuple[List[np.ndarray], List[int]]:
     """
     Build NTU RGB+D dataset using Cross-View split.
@@ -228,13 +205,26 @@ def build_ntu_skeleton_lists_xview(
         # Extract action label (zero-based)
         action_idx = int(filename[17:20]) - 1
 
-        skeleton = read_ntu_skeleton_file(filepath, num_joints) # (T, 25, 3)
-        hip = skeleton[:, 0:1, :]  # shape: (T, 1, 3)
-        skeleton = skeleton - hip  # shape: (T, 25, 3) - (T, 1, 3) → (T, 25, 3)
-
+        """
+        Read skeleton data and apply augmentations
+        """
+        skeleton = read_ntu_skeleton_file(filepath, num_joints)
+        skeleton = skeleton - skeleton[:, 0:1, :]  # hip centering
+        # always apply normalization
+        skeleton = normalize_scale(skeleton)
+        skeleton = skeleton.astype(np.float32)
+        # Apply augmentations only for training set
+        if is_train:
+            skeleton = transform_sequence(skeleton)
         sequences.append(skeleton)
         labels.append(action_idx)
-
+    # cache them
+    if is_train and augment:
+        save_cached_data(sequences, labels, path="ntu_cache_train_view_64_10_augmented.npz")
+    elif is_train and not augment:
+        save_cached_data(sequences, labels, path="ntu_cache_train_view_64_10_validation.npz")
+    else:
+        save_cached_data(sequences, labels, path="ntu_cache_test_view_64_10.npz")
     return sequences, labels
 
 
@@ -276,24 +266,25 @@ def save_cached_data(sequences, labels, path="ntu_cache_train_sub.npz"):
 if __name__ == "__main__":
     import time
     t_start = time.time()
-    
-    all_seq, all_lbl = build_ntu_skeleton_lists_xsub('nturgb+d_skeletons', is_train=False)
-
+    train_seq, train_lbl = build_ntu_skeleton_lists_xsub('nturgb+d_skeletons', is_train=True, augment=True)
+    all_seq_clean, all_lbl_clean = build_ntu_skeleton_lists_xsub('nturgb+d_skeletons', is_train=True, augment=False)
+    _, _, val_seq, val_lbl = split_train_val(all_seq_clean, all_lbl_clean, val_ratio=0.15)
+    test_seq, test_lbl = build_ntu_skeleton_lists_xsub('nturgb+d_skeletons', is_train=False, augment=False)
     t_end = time.time()
-    print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")
-    print(f"[VERIFY] Number of sequences: {len(all_seq)}")
-    print(f"[VERIFY] Number of unique labels: {len(set(all_lbl))}")
-    #tr_seq, tr_lbl, val_seq, val_lbl = split_train_val(all_seq, all_lbl, val_ratio=0.15)
 
-    # check the shape of a sample sequence
-    print(f"[VERIFY] Sample sequence shape: {all_seq[0].shape}")
-    print(f"[VERIFY] Sample sequence shape: {all_seq[15].shape}")
+    print(f"Time taken: {t_end - t_start:.2f} seconds")
+    print(f"Train sequences: {len(train_seq)}, Train labels: {len(train_lbl)}")
+    print(f"Validation sequences: {len(val_seq)}, Validation labels: {len(val_lbl)}")
+    print(f"Sample train sequence shape: {train_seq[0].shape}, dtype: {train_seq[0].dtype}")
+    print(f"Sample validation sequence shape: {val_seq[0].shape}, dtype: {val_seq[0].dtype}")  
 
-    test_set = ActionRecognitionDataset(all_seq, all_lbl)
-    #train_set = ActionRecognitionDataset(tr_seq, tr_lbl)
-    #val_set = ActionRecognitionDataset(val_seq, val_lbl)
-    test_loader = DataLoader(
-        test_set,
-        batch_size=32,
-        shuffle=False,
-    )
+    train_dataset = ActionRecognitionDataset(train_seq, train_lbl)
+    val_dataset = ActionRecognitionDataset(val_seq, val_lbl)
+    test_dataset = ActionRecognitionDataset(test_seq, test_lbl)
+
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+    print(f"Train DataLoader: {len(train_loader)} batches")
+    print(f"Validation DataLoader: {len(val_loader)} batches")
+    print(f"Test DataLoader: {len(test_loader)} batches")
