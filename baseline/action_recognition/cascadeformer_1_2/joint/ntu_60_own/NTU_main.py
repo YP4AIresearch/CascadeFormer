@@ -171,8 +171,10 @@ def main():
     elif not freezeT1:
         print("[INFO] finetuning the entire T1 model...")
 
-    ft_lr = 3e-5
-    wd = 1e-2
+    ft_lr = 2.6e-4 # this is specifically found by LR finder
+    print(f"[INFO] Finetuning learning rate: {ft_lr}")
+    wd = 5e-3 # weight decay for finetuning
+    print(f"[INFO] Weight decay: {wd}")
     trained_T2, train_cross_attn, train_head = finetuning(
         train_loader=train_finetuning_dataloader,
         val_loader=val_finetuning_dataloader,

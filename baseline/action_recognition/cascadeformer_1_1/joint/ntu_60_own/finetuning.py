@@ -126,14 +126,6 @@ def finetuning(
          list(gait_head.parameters())
 
     optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
-    
-    # use CosineAnnealingWarmRestarts scheduler instead of CosineAnnealingLR
-    # scheduler = CosineAnnealingWarmRestarts(
-    #     optimizer,
-    #     T_0=10,      
-    #     T_mult=2,
-    #     eta_min=1e-6
-    # )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
     
 
