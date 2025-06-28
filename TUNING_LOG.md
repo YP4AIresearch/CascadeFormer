@@ -97,7 +97,7 @@ The complete experiment tuning logs:
 | 30% | linear | 256 | 8 | 4 | no | 1e-4 | 300 | 1e-5, wd=1e-4 | 200 | 92.98% |
 | 30% | linear | 256 | 8 | 4 | no | 1e-4 | 300 | 1e-5, wd=1e-4 | 300 | 92.79% |
 | 30% | linear | 256 | 8 | 4 | no | 1e-4 | 500 | 1e-5, wd=1e-4 | 500 | **94.10%** |
-| <tr><td colspan="11" align="center"> CascadeFormer 1.1 (spatial transformer) </td></tr> |
+| <tr><td colspan="11" align="center"> CascadeFormer 1.2 (spatial transformer) </td></tr> |
 | 30% | linear | 256 | 8 | 4 | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 100 | **94.10%** |
 | 30% | linear | 256 | 8 | 4 | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 120 | **94.10%** |
 | 30% | linear | 256 | 8 | 4 | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 200 | 94.01% |
@@ -200,6 +200,10 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **1024** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.33% |
 | <tr><td colspan="11" align="center"> CascadeFormer 1.2 </td></tr> |
 | 30%, 64+1.0 | linear | **512** | 8 | **8** | no | 1e-4 | 50 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 71.79% |
+| 30%, 64+1.0 | linear | **512** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level, freeze-25-unfreeze | 100 | **72.10%** |
+
+| <tr><td colspan="11" align="center"> CascadeFormer 1.3 </td></tr> |
+
 
 
 | <tr><td colspan="11" align="center"> CascadeFormer 2.0 </td></tr> |

@@ -37,7 +37,14 @@ class BaseT1(nn.Module):
         self.d_model = d_model
 
         # Spatial transformer over joints
-        self.spatial_transformer = SpatialTransformer(num_joints, self.input_dim, d_model=d_model, nhead=nhead)
+        NUM_SPATIAL_LAYERS = 4 
+        self.spatial_transformer = SpatialTransformer(
+            num_joints, 
+            self.input_dim, 
+            d_model=d_model, 
+            nhead=nhead,
+            num_layers=NUM_SPATIAL_LAYERS
+        )
 
         # Linear projection to Transformer dimension (J*D → d_model)
         self.joint_embedding = nn.Linear(num_joints * self.input_dim, d_model)

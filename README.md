@@ -1,20 +1,20 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
-## Case study for CascadeFormer 1.1 (with convolution):
-
-### Tuning the model size won't help...
-
-1. layers (fix hidden size = 512, heads = 8): 8 layers: 73.07%; 12 layers: 73.97%
-2. hidden size (fix layers = 8, heads = 8): 512: 73.97%; 768: 73.48%; 1024: 73.61%
-
-### Strong data augmentation won't help...
+## Strong data augmentation - already applied!
 
 1. 100% data augmentation instead of just 10%?
 2. 73.61% -> 73.33%...
 
+### Tuning the model size
+
+1. layers (fix hidden size = 512, heads = 8): 8 layers: 73.07%; 12 layers: 73.97%
+2. hidden size (fix layers = 8, heads = 8): 512: 73.97%; 768: 73.48%; 1024: 73.61%
+
 ### Multi-stream input?
 
 pending - separate T1 encoders, fuse features after T1 [under discussion]
+
+### Residual connection?
 
 ### SoTA of NTU
 
@@ -60,7 +60,7 @@ pending - separate T1 encoders, fuse features after T1 [under discussion]
 | ------- | ------- | -------- | --------- | ---------- | ------- |
 | Penn Action | 2,326 | 15 | 2D | 13 | **94.10%** > 93.4% (HDM-BG) [google drive](https://drive.google.com/drive/folders/1Jl7lIVcbqw6W2xzvf09nVRERXHIFrjXn); **94.01%** [google drive](https://drive.google.com/drive/folders/1jAlH7pf-zaHy7CVIF3MAmiZ5mMtDw2j-) |
 | N-UCLA | 1,494 | 12 | 3D | 20 | **90.73%** < 98.3% (SkateFormer) [google drive](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) |
-| NTU/CS | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
+| NTU/CS | 56,880 | 60 | 3D | 25 | **72.10%** << 92.6% (SkateFormer) |
 | NTU/CV | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
 
 ### leaderboard - CascadeFormer 1.3
