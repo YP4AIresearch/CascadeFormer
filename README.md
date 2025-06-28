@@ -14,8 +14,6 @@
 
 pending - separate T1 encoders, fuse features after T1 [under discussion]
 
-### Residual connection?
-
 ### SoTA of NTU
 
 ![alt text](docs/NTU_SoTA.png)

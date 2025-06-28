@@ -15,40 +15,38 @@ NTU_BONES = [
     (0, 17), (17, 18), (18, 19), (19, 21), (21, 22),  # spine + head
     (19, 23), (12, 24)                                # hands/feet (optional)
 ]
-
 class GCNLayer(nn.Module):
     def __init__(self, in_features, out_features, A):
         super().__init__()
-        self.A = A  # adjacency matrix (J x J)
+        self.A = A
         self.linear = nn.Linear(in_features, out_features)
+        self.residual = (in_features == out_features)
 
     def forward(self, x):
-        # x: (B*T, J, D)
         A = self.A.to(x.device)
         Ax = torch.einsum('ij,bjd->bid', A, x)
-        return self.linear(Ax)
+        out = self.linear(Ax)
+        if self.residual:
+            out = out + x
+        return out
 
 class SpatialGCN(nn.Module):
-    def __init__(self, num_joints, input_dim, hidden_dim=64, output_dim=64):
+    def __init__(self, num_joints, input_dim, hidden_dim, output_dim):
         super().__init__()
-
-        # Define adjacency matrix (J x J), e.g., normalized with self-loops
         self.A = self.build_adjacency(num_joints, NTU_BONES)
-
         self.gcn1 = GCNLayer(input_dim, hidden_dim, self.A)
         self.gcn2 = GCNLayer(hidden_dim, hidden_dim, self.A)
         self.gcn3 = GCNLayer(hidden_dim, output_dim, self.A)
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        # x: (B, T, J, D)
         B, T, J, D = x.shape
-        x = x.view(B * T, J, D)        # (B*T, J, D)
-        x = self.relu(self.gcn1(x))    # (B*T, J, H)
-        x = self.relu(self.gcn2(x))    # (B*T, J, H)
-        x = self.gcn3(x)               # (B*T, J, O)
-        return x.view(B, T, J, -1)     # (B, T, J, O)
-    
+        x = x.view(B * T, J, D)
+        x = self.relu(self.gcn1(x))
+        x = self.relu(self.gcn2(x))
+        x = self.gcn3(x)
+        return x.view(B, T, J, -1)
+
     @staticmethod
     def build_adjacency(num_joints, bones, self_loops=True, normalize=True):
         A = torch.zeros((num_joints, num_joints), dtype=torch.float32)
@@ -60,25 +58,26 @@ class SpatialGCN(nn.Module):
             D_inv_sqrt = torch.diag(1.0 / A.sum(dim=1).clamp(min=1e-5).sqrt())
             A = D_inv_sqrt @ A @ D_inv_sqrt
         return A
-
 class BaseT1(nn.Module):
-    def __init__(self, num_joints: int, three_d: bool, d_model: int = 128, nhead: int = 4, num_layers: int = 2):
+    def __init__(self, num_joints, three_d, d_model=128, nhead=4, num_layers=2):
         super().__init__()
         self.num_joints = num_joints
         self.input_dim = 3 if three_d else 2
         self.d_model = d_model
 
-        # Spatial feature extractor: 3-layer GCN
-        self.spatial_gcn = SpatialGCN(num_joints, self.input_dim, hidden_dim=64, output_dim=self.input_dim)
+        # Spatial GCN with output projected to d_model
+        self.spatial_gcn = SpatialGCN(
+            num_joints, 
+            input_dim=self.input_dim, 
+            hidden_dim=d_model // 2,  # Hidden dimension can be smaller 
+            output_dim=d_model
+        )
 
-        # Linear projection to transformer dimension
-        self.joint_embedding = nn.Linear(num_joints * self.input_dim, d_model)
-
-        # Positional encoding over time
+        # Positional encoding for temporal transformer
         self.pos_embedding = nn.Parameter(torch.zeros(1, POSITIONAL_UPPER_BOUND, d_model))
         nn.init.trunc_normal_(self.pos_embedding, std=0.02)
 
-        # Temporal transformer encoder
+        # Temporal Transformer
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
@@ -87,23 +86,16 @@ class BaseT1(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, J, D = x.shape
-        assert D == self.input_dim and T <= POSITIONAL_UPPER_BOUND
-
-        x = self.spatial_gcn(x)                    # (B, T, J, D)
-        x = x.view(B, T, J * D)                    # (B, T, J*D)
-        x = self.joint_embedding(x)                # (B, T, d_model)
-        x = x + self.pos_embedding[:, :T, :]       # (B, T, d_model)
-        encoded = self.transformer_encoder(x)      # (B, T, d_model)
-        decoded = self.reconstruction_head(encoded)  # (B, T, J*D)
+        encoded = self.encode(x)
+        decoded = self.reconstruction_head(encoded)
         return decoded.view(B, T, J, D)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         B, T, J, D = x.shape
         x = self.spatial_gcn(x)
-        x = x.view(B, T, J * D)
-        x = self.joint_embedding(x)
+        x = x.mean(dim=2)  # (B, T, d_model)
         x = x + self.pos_embedding[:, :T, :]
-        return self.transformer_encoder(x) 
+        return self.transformer_encoder(x)
 
 
 PAD_IDX = 0.0
