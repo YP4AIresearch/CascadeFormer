@@ -144,7 +144,6 @@ cross-subject evaluation
 cross-subject evaluation:
 | masked pretraining | decoder | d_model | n_head | num_layers | freeze T1? | T1-lr | #epochs | T2-lr (ft-lr) | #epochs | accuracy |
 |--------------------|---------|---------|--------|------------|------------|--------|----------|----------------|----------|----------|
-| <tr><td colspan="11" align="center"> multiple bodies: **skipping** </td></tr> |
 | <tr><td colspan="11" align="center"> **regular** pretraining </td></tr> |
 | no | linear | 256 | 8 | 4 | no | 1e-4 | 100 | 1e-5, wd=1e-4 | 50 | 70.46% |
 | no | linear | 256 | 8 | 4 | no | 1e-4 | 300 | 1e-5, wd=1e-4 | 50 | 71.33% |
@@ -168,7 +167,7 @@ cross-subject evaluation:
 | 30% | linear | 512 | 8 | 8 | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 100 | **74.79%** |
 | 30% | linear | 512 | 8 | 8 | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 200 | 74.75% |
 | 30% | linear | 512 | 8 | **12** | no | 1e-4 | 100 | 1e-5, wd=1e-4 | 100 | **75.12%** |
-| 30% | linear | 512 | 8 | **12** | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 200 | **75.22%** |
+| 30% | linear | 512 | 8 | **12** | no | 1e-4 | 200 | 1e-5, wd=1e-4 | 200 | **75.22% (the best so far)** |
 | <tr><td colspan="11" align="center"> ablation study: subtraction-based bones </td></tr> |
 | 30% | linear | 512 | 8 | 8 | no | 1e-4 | 100 | 1e-5, wd=1e-4 | 100 | **74.23%** |
 | <tr><td colspan="11" align="center"> ablation study: concatenation-based bones </td></tr> |
@@ -200,7 +199,7 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **1024** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.33% |
 | <tr><td colspan="11" align="center"> CascadeFormer 1.2 </td></tr> |
 | 30%, 64+1.0 | linear | **512** | 8 | **8** | no | 1e-4 | 50 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 71.79% |
-| 30%, 64+1.0 | linear | **512** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level, freeze-25-unfreeze | 100 | **72.10%** |
+| 30%, 64+1.0 | linear | **512** | 8 | **8** | freeze-25-unfreeze | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | **72.10%** |
 
 | <tr><td colspan="11" align="center"> CascadeFormer 1.3 </td></tr> |
 

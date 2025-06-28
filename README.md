@@ -1,39 +1,26 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
-## Strong data augmentation - already applied!
-
-1. 100% data augmentation instead of just 10%?
-2. 73.61% -> 73.33%...
-
-### Tuning the model size
-
-1. layers (fix hidden size = 512, heads = 8): 8 layers: 73.07%; 12 layers: 73.97%
-2. hidden size (fix layers = 8, heads = 8): 512: 73.97%; 768: 73.48%; 1024: 73.61%
-
-### Multi-stream input?
-
-pending - separate T1 encoders, fuse features after T1 [under discussion]
-
-### SoTA of NTU
-
-![alt text](docs/NTU_SoTA.png)
-
-### Learning Rate Search
-
-![alt text](/lr_finder_plot_annotated.png)
-
 ## CascadeFormer 1.X series
 
 ![alt text](docs/CascadeFormer_1.png)
 
-### leaderboard - CascadeFormer 1.0
+## Tuning Diagram
+
+![alt text](docs/tuning_diagram.png)
+
+## Leaderboard
+
+| dataset | #videos | #actions | dimension | #joints | SoTA acc | CF 1.0 | CF 1.1 | CF 1.2 | CF 1.3 |
+| ------- | ------- | -------- | --------- | ---------- | ------- | ------ | ------- | ------ | ------- |
+| Penn Action | 2,326 | 15 | 2D | 13 | 93.4% (HDM-BG) | **94.66%** [checkpoint](https://drive.google.com/drive/folders/1Za50ZE9ZEKdEps_ZE-JIbatTpLuMW83k) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1Jl7lIVcbqw6W2xzvf09nVRERXHIFrjXn); **94.01%** [checkpoint](https://drive.google.com/drive/folders/1jAlH7pf-zaHy7CVIF3MAmiZ5mMtDw2j-) | N/A |
+| N-UCLA | 1,494 | 12 | 3D | 20 | 98.3% (SkateFormer) | **88.79%** |**91.16%** [checkpoint](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [checkpoint](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) | **90.73%** [checkpoint](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) | N/A |
+| NTU/CS | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) | **75.22%** | **74.10%** | **72.10%** | N/A |
+| NTU/CV | 56,880 | 60 | 3D | 25 | 97.0% (SkateFormer) | N/A | N/A | N/A | N/A |
+
+## Ablation Study: bone representation (Penn Action and NTU/CS)
 
 | dataset | #videos | #actions | dimension | #joints | outperform SoTA? |
 | ------- | ------- | -------- | --------- | ---------- | ------- |
-| Penn Action | 2,326 | 15 | 2D | 13 | **94.66%** > 93.4% (HDM-BG) [google drive](https://drive.google.com/drive/folders/1Za50ZE9ZEKdEps_ZE-JIbatTpLuMW83k) |
-| N-UCLA | 1,494 | 12 | 3D | 20 | **88.79%** < 98.3% (SkateFormer) |
-| NTU/CS | 56,880 | 60 | 3D | 25 | **75.22%** << 92.6% (SkateFormer) - cross subject |
-| NTU/CD | 56,880 | 60 | 3D | 25 | TBD |
 | <tr><td colspan="6" align="center"> **Bone** data representation ablation study </td></tr> |
 | Penn Action, subtraction-bone | 2,326 | 15 | 2D | 13 | **92.32%** ~ 93.4% (HDM-BG) |
 | Penn Action, concatenation-bone | 2,326 | 15 | 2D | 13 | **93.16%** ~ 93.4% (HDM-BG) |
@@ -42,34 +29,6 @@ pending - separate T1 encoders, fuse features after T1 [under discussion]
 | N-UCLA, concatenation-bone | 1,494 | 12 | 3D | 20 | **88.15%** < 98.3% (SkateFormer) |
 | NTU/CS, subtraction-bone | 56,880 | 60 | 3D | 25 | **74.23%** << 92.6% (SkateFormer) - cross subject |
 | NTU/CS, concatenation-bone | 56,880 | 60 | 3D | 25 | **73.81%** << 92.6% (SkateFormer) - cross subject |
-
-### leaderboard - CascadeFormer 1.1
-
-| dataset | #videos | #actions | dimension | #joints | outperform SoTA? |
-| ------- | ------- | -------- | --------- | ---------- | ------- |
-| Penn Action | 2,326 | 15 | 2D | 13 | **94.10%** > 93.4% (HDM-BG) [google drive](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS) |
-| N-UCLA | 1,494 | 12 | 3D | 20 | **91.16%** < 98.3% (SkateFormer) [google drive](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [google drive](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) |
-| NTU/CS | 56,880 | 60 | 3D | 25 | **74.10%** << 92.6% (SkateFormer) |
-| NTU/CV | 56,880 | 60 | 3D | 25 | ??? << 92.6% (SkateFormer) |
-
-### leaderboard - CascadeFormer 1.2
-
-| dataset | #videos | #actions | dimension | #joints | outperform SoTA? |
-| ------- | ------- | -------- | --------- | ---------- | ------- |
-| Penn Action | 2,326 | 15 | 2D | 13 | **94.10%** > 93.4% (HDM-BG) [google drive](https://drive.google.com/drive/folders/1Jl7lIVcbqw6W2xzvf09nVRERXHIFrjXn); **94.01%** [google drive](https://drive.google.com/drive/folders/1jAlH7pf-zaHy7CVIF3MAmiZ5mMtDw2j-) |
-| N-UCLA | 1,494 | 12 | 3D | 20 | **90.73%** < 98.3% (SkateFormer) [google drive](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) |
-| NTU/CS | 56,880 | 60 | 3D | 25 | **72.10%** << 92.6% (SkateFormer) |
-| NTU/CV | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
-
-### leaderboard - CascadeFormer 1.3
-
-| dataset | #videos | #actions | dimension | #joints | outperform SoTA? |
-| ------- | ------- | -------- | --------- | ---------- | ------- |
-| Penn Action | 2,326 | 15 | 2D | 13 | 93.4% (HDM-BG) |
-| N-UCLA | 1,494 | 12 | 3D | 20 | 98.3% (SkateFormer) |
-| NTU/CS | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
-| NTU/CV | 56,880 | 60 | 3D | 25 | 92.6% (SkateFormer) |
-
 
 ## CascadeFormer 2.0 (interleaved spatial–temporal attention inspired by [IIP-Transformer](https://arxiv.org/abs/2110.13385) and [ST-TR](https://arxiv.org/abs/2012.06399))  
 
