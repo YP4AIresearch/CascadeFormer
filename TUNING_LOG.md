@@ -198,11 +198,15 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **1024** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.61% |
 | <tr><td colspan="11" align="center"> 100% augmentation </td></tr> |
 | 30%, 64+1.0 | linear | **1024** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.33% |
+| <tr><td colspan="11" align="center"> CascadeFormer 1.2 </td></tr> |
+| 30%, 64+1.0 | linear | **512** | 8 | **8** | no | 1e-4 | 50 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 71.79% |
 
 
 | <tr><td colspan="11" align="center"> CascadeFormer 2.0 </td></tr> |
 | 30%, 64+1.0 | linear | **800** | 8 | **2** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 54.48% |
 | 30%, 64+1.0 | linear | **800** | 8 | **2** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 58.29%, 20% validation |
+| 30%, 64+1.0 | linear | **800** | 8 | **4** | no | 1e-4 | 25 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 25 | 58.29%, 20% validation |
+
 
 
 ## Baseline - Experiment (NW-UCLA, cross-view)

@@ -17,8 +17,7 @@ def load_cached_data(path="ntu_cache_train_sub.npz"):
 def parse_args():
     parser = argparse.ArgumentParser(description="Gait Recognition Training")
     parser.add_argument("--pretrain", action='store_true', help="Run the stage of pretraining")
-    parser.add_argument("--root_dir", type=str, default="Penn_Action/", help="Root directory of the dataset")
-    parser.add_argument("--batch_size", type=int, default=32, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs for training")
     parser.add_argument("--hidden_size", type=int, default=64, help="Hidden size for the model")
     parser.add_argument("--class_specific_split", action='store_true', help="Use class-specific split for training and validation")
@@ -117,7 +116,7 @@ def main():
         )
 
         # save pretrained model
-        torch.save(model.state_dict(), "action_checkpoints/fixed_ntu/NTU_pretrained.pt")
+        torch.save(model.state_dict(), "action_checkpoints/NTU_pretrained.pt")
 
         print("Aha! pretraining is done!")
         print("=" * 100)
@@ -130,7 +129,7 @@ def main():
     # load T1 models
     three_d = True
     t1 = load_T1(
-        model_path="action_checkpoints/fixed_ntu/NTU_pretrained.pt",
+        model_path="action_checkpoints/NTU_pretrained.pt",
         num_joints=NUM_JOINTS_NTU,
         three_d=three_d,
         d_model=hidden_size,
@@ -193,12 +192,12 @@ def main():
         print(f"[INFO] Unfreezing layers: {unfreeze_layers}...")
 
     # save the finetuned models
-    torch.save(trained_T2.state_dict(), "action_checkpoints/fixed_ntu/NTU_finetuned_T2.pt")
-    torch.save(train_cross_attn.state_dict(), "action_checkpoints/fixed_ntu/NTU_finetuned_cross_attn.pt")
-    torch.save(train_head.state_dict(), "action_checkpoints/fixed_ntu/NTU_finetuned_head.pt")
+    torch.save(trained_T2.state_dict(), "action_checkpoints/NTU_finetuned_T2.pt")
+    torch.save(train_cross_attn.state_dict(), "action_checkpoints/NTU_finetuned_cross_attn.pt")
+    torch.save(train_head.state_dict(), "action_checkpoints/NTU_finetuned_head.pt")
 
     if any(param.requires_grad for param in t1.parameters()):
-        torch.save(t1.state_dict(), "action_checkpoints/fixed_ntu/NTU_finetuned_T1.pt")
+        torch.save(t1.state_dict(), "action_checkpoints/NTU_finetuned_T1.pt")
 
     print("Aha! finetuned models saved successfully!")
 

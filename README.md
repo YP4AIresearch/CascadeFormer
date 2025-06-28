@@ -20,6 +20,10 @@ pending - separate T1 encoders, fuse features after T1 [under discussion]
 
 ![alt text](docs/NTU_SoTA.png)
 
+### Reference Training setup (SkateFormer, HyperFormer)
+
+![alt text](docs/reference_training_setup.png)
+
 ## CascadeFormer 1.X series
 
 ![alt text](docs/CascadeFormer_1.png)
