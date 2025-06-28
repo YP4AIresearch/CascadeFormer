@@ -13,3 +13,7 @@ their results:
 ![alt text](docs/ST_TR_results.png)
 
 ![alt text](docs/IIP_results.png)
+
+## Reference Training setup (SkateFormer, HyperFormer)
+
+![alt text](docs/reference_training_setup.png)
