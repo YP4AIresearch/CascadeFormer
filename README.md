@@ -17,6 +17,11 @@
 | NTU/CS | 56,880 | 25, 3D | 92.6% (SkateFormer) | **75.22%** | **74.10%** | **72.10%** | N/A |
 | NTU/CV | 56,880 | 25, 3D | 97.0% (SkateFormer) | N/A | N/A | N/A | N/A |
 
+## My hypothesis of the major bottlenecks so far
+
+1. lack of spatial inductive bias - need to tune the spatial feature extraction **much MORE**!
+2. still not sure how to use T1 during finetuning - frozen OR finetuned? 
+
 ## Ablation Study: bone representation (Penn Action and NTU/CS)
 
 | dataset | #videos | #actions | dimension | #joints | outperform SoTA? |
