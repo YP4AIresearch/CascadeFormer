@@ -1,77 +1,64 @@
 
 import numpy as np
 import torch
-from sklearn.metrics import accuracy_score
 import argparse
-from typing import Tuple
 from torch import nn
-from torch.utils.data import DataLoader
-from base_dataset import ActionRecognitionDataset
 from penn_utils import set_seed
 from NTU_utils import NUM_JOINTS_NTU
 from finetuning import load_T1, load_T2, load_cross_attn, GaitRecognitionHead
+from torch_lr_finder import LRFinder
+from typing import List
+import matplotlib.pyplot as plt
+from torch.utils.data import Dataset
+
+class ActionRecognitionDataset(Dataset):
+    def __init__(self, sequences: List[np.ndarray], labels: List[int]):
+        self.seqs   = sequences
+        self.labels = labels
+        self.num_classes = len(set(labels))
+
+    def __len__(self): return len(self.seqs)
+
+    def __getitem__(self, idx):
+        seq = torch.tensor(self.seqs[idx], dtype=torch.float32)
+        label_raw = self.labels[idx]
+
+        # Convert one-hot or list to scalar index
+        if isinstance(label_raw, (list, np.ndarray)) and not np.isscalar(label_raw):
+            label = int(np.argmax(label_raw))
+        else:
+            label = int(label_raw)
+
+        label = torch.tensor(label, dtype=torch.long)
+        return seq, label
+
+
+class CascadeWrapper(nn.Module):
+    def __init__(self, T1, T2, cross_attn, head):
+        super().__init__()
+        self.T1 = T1
+        self.T2 = T2
+        self.cross_attn = cross_attn
+        self.head = head
+
+    def forward(self, x):
+        feat1 = self.T1.encode(x)               
+        feat2 = self.T2.encode(feat1)               
+        fused = self.cross_attn(feat1, feat2, feat2)
+        pooled = fused.mean(dim=1)
+        out = self.head(pooled)
+        return out
+
 
 def load_cached_data(path="ntu_cache_train_sub.npz"):
     data = np.load(path, allow_pickle=True)
     sequences = list(data["sequences"])
     labels = list(data["labels"])
+    
+    # Convert from one-hot to index labels if needed
+    labels = [np.argmax(label) if isinstance(label, (np.ndarray, list)) and not np.isscalar(label) else label for label in labels]
+
     return sequences, labels
-
-def evaluate(
-    data_loader: DataLoader,
-    t1: nn.Module,
-    t2: nn.Module,
-    cross_attn: nn.Module,
-    gait_head: nn.Module,
-    device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
-) -> Tuple[float, torch.Tensor, torch.Tensor]:
-    """
-    Performs inference and computes accuracy over the given dataset.
-
-    Args:
-        data_loader: DataLoader for evaluation
-        t1: pretrained (frozen or finetuned) T1 transformer
-        t2: trained T2 transformer
-        cross_attn: trained CrossAttention module
-        gait_head: trained classification head
-        device: device to run inference on
-        pooling: pooling strategy - 'mean' or 'attention'
-        attention_pool: optional attention pooling module (required if pooling == 'attention')
-
-    Returns:
-        accuracy: float
-        all_preds: tensor of predictions
-        all_labels: tensor of ground-truth labels
-    """
-    t1.eval()
-    t2.eval()
-    cross_attn.eval()
-    gait_head.eval()
-   
-
-    all_preds, all_labels = [], []
-
-    with torch.no_grad():
-        for skeletons, labels in data_loader:
-            skeletons, labels = skeletons.to(device), labels.to(device)
-
-            x1 = t1.encode(skeletons)
-            x2 = t2.encode(x1)
-            fused = cross_attn(x1, x2, x2)
-            pooled = fused.mean(dim=1)
-
-            logits = gait_head(pooled)
-            preds = logits.argmax(dim=1)
-
-            all_preds.append(preds.cpu())
-            all_labels.append(labels.cpu())
-
-    all_preds = torch.cat(all_preds)
-    all_labels = torch.cat(all_labels)
-
-    accuracy = accuracy_score(all_labels, all_preds)
-
-    return accuracy, all_preds, all_labels
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Gait Recognition Inference")
@@ -92,7 +79,7 @@ def main():
 
     # Set the device
 
-    hidden_size = 512 # 256, 512
+    hidden_size = 512 # 256, 512, 768, 1024
     n_heads = 8
     num_layers = 8    # 4, 8, 12
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -102,9 +89,9 @@ def main():
     print("=" * 50)
 
     # load the dataset
-    test_seq, test_lbl = load_cached_data("ntu_cache_test_sub_64_10.npz")    
+    test_seq, test_lbl = load_cached_data('ntu_cache_test_sub_64_10.npz')
+    print("[DEBUG] Label example:", test_lbl[0], type(test_lbl[0]), np.array(test_lbl[0]).shape)
     test_dataset = ActionRecognitionDataset(test_seq, test_lbl)
-    
     # get the number of classes
     num_classes = len(set(test_lbl))
 
@@ -133,22 +120,35 @@ def main():
 
     # evaluate the model
     print("=" * 50)
-    print("[INFO] Starting evaluation...")
-    print("=" * 50)
-    accuracy, _, _ = evaluate(
-        test_loader,
-        t1,
-        t2,
-        cross_attn,
-        gait_head,
-        device=device
-    )
-
-    print("=" * 50)
-    print("[INFO] Evaluation completed!")
-    print(f"Final Accuracy: {accuracy:.4f}")
+    print("[INFO] Starting LR search...")
     print("=" * 50)
 
+    # Initialize LR Finder
+    model = CascadeWrapper(t1, t2, cross_attn, gait_head).to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)  # safe start
+    lr_finder = LRFinder(model, optimizer, criterion, device=device)
+    lr_finder.range_test(test_loader, end_lr=1e-1, num_iter=100, step_mode="exp")
+
+    # Access data
+    lrs = lr_finder.history['lr']
+    losses = lr_finder.history['loss']
+
+    # Compute the steepest descent (same logic as LRFinder's default suggestion)
+    grads = np.gradient(losses, np.log(lrs))
+    min_grad_idx = np.argmin(grads)
+    suggested_lr = lrs[min_grad_idx]
+
+    # Plot as usual
+    lr_finder.plot()
+    plt.scatter(suggested_lr, losses[min_grad_idx], s=20, c='green', label=f"Suggested LR: {suggested_lr:.2e}")
+    plt.legend()
+    plt.title("Learning Rate Finder")
+    plt.xlabel("Learning rate")
+    plt.ylabel("Loss")
+
+    # Save
+    plt.savefig("lr_finder_plot_annotated.png")
 
 if __name__ == "__main__":
     main()

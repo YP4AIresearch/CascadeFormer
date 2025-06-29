@@ -171,7 +171,7 @@ def main():
     elif not freezeT1:
         print("[INFO] finetuning the entire T1 model...")
 
-    ft_lr = 3e-5
+    ft_lr = 2e-4
     wd = 1e-2
     trained_T2, train_cross_attn, train_head = finetuning(
         train_loader=train_finetuning_dataloader,

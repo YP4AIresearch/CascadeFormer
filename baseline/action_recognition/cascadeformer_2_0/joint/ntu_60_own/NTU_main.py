@@ -108,7 +108,7 @@ def main():
 
         print("[TEST] testing global joint masking" + "=" * 40)
         # save pretrained model
-        torch.save(model.state_dict(), "action_checkpoints/NTU_pretrained.pt")
+        torch.save(model.state_dict(), "action_checkpoints/NTU_2POINT/NTU_pretrained.pt")
 
         print("Aha! pretraining is done!")
         print("=" * 100)
@@ -120,7 +120,7 @@ def main():
 
     # load T1 models
     t1 = load_T1(
-        model_path="action_checkpoints/NTU_pretrained.pt",
+        model_path="action_checkpoints/NTU_2POINT/NTU_pretrained.pt",
         num_joints=NUM_JOINTS_NTU,
         three_d=three_d,
         d_model=hidden_size,
@@ -185,12 +185,12 @@ def main():
         print(f"[INFO] Unfreezing layers: {unfreeze_layers}...")
 
     # save the finetuned models
-    torch.save(trained_T2.state_dict(), "action_checkpoints/NTU_finetuned_T2.pt")
-    torch.save(train_cross_attn.state_dict(), "action_checkpoints/NTU_finetuned_cross_attn.pt")
-    torch.save(train_head.state_dict(), "action_checkpoints/NTU_finetuned_head.pt")
+    torch.save(trained_T2.state_dict(), "action_checkpoints/NTU_2POINT/NTU_finetuned_T2.pt")
+    torch.save(train_cross_attn.state_dict(), "action_checkpoints/NTU_2POINT/NTU_finetuned_cross_attn.pt")
+    torch.save(train_head.state_dict(), "action_checkpoints/NTU_2POINT/NTU_finetuned_head.pt")
 
     if any(param.requires_grad for param in t1.parameters()):
-        torch.save(t1.state_dict(), "action_checkpoints/NTU_finetuned_T1.pt")
+        torch.save(t1.state_dict(), "action_checkpoints/NTU_2POINT/NTU_finetuned_T1.pt")
 
     print("Aha! finetuned models saved successfully!")
 

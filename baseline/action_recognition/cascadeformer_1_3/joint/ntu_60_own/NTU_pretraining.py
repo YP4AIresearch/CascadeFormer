@@ -58,6 +58,7 @@ class SpatialGCN(nn.Module):
             D_inv_sqrt = torch.diag(1.0 / A.sum(dim=1).clamp(min=1e-5).sqrt())
             A = D_inv_sqrt @ A @ D_inv_sqrt
         return A
+
 class BaseT1(nn.Module):
     def __init__(self, num_joints, three_d, d_model=128, nhead=4, num_layers=2):
         super().__init__()
@@ -65,37 +66,41 @@ class BaseT1(nn.Module):
         self.input_dim = 3 if three_d else 2
         self.d_model = d_model
 
-        # Spatial GCN with output projected to d_model
+        # Spatial GCN: acts like a learned joint-wise encoder
         self.spatial_gcn = SpatialGCN(
             num_joints, 
             input_dim=self.input_dim, 
-            hidden_dim=d_model // 2,  # Hidden dimension can be smaller 
+            hidden_dim=d_model // 2, 
             output_dim=d_model
         )
 
-        # Positional encoding for temporal transformer
-        self.pos_embedding = nn.Parameter(torch.zeros(1, POSITIONAL_UPPER_BOUND, d_model))
+        # Learnable joint identity embedding
+        self.joint_embedding = nn.Parameter(torch.randn(1, num_joints, d_model))
+
+        # Positional encoding (temporal, repeated for each joint)
+        self.pos_embedding = nn.Parameter(torch.zeros(1, POSITIONAL_UPPER_BOUND * num_joints, d_model))
         nn.init.trunc_normal_(self.pos_embedding, std=0.02)
 
-        # Temporal Transformer
+        # Temporal transformer over (T × J) tokens
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # Reconstruction head
-        self.reconstruction_head = nn.Linear(d_model, num_joints * self.input_dim)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, T, J, D = x.shape
-        encoded = self.encode(x)
-        decoded = self.reconstruction_head(encoded)
-        return decoded.view(B, T, J, D)
+        self.reconstruction_head = nn.Linear(d_model, self.input_dim)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         B, T, J, D = x.shape
-        x = self.spatial_gcn(x)
-        x = x.mean(dim=2)  # (B, T, d_model)
-        x = x + self.pos_embedding[:, :T, :]
+        x = self.spatial_gcn(x)  # (B, T, J, d_model)
+        x = x + self.joint_embedding  # broadcast: (1, J, d_model)
+        x = x.view(B, T * J, self.d_model)  # flatten to (B, T×J, d_model)
+        x = x + self.pos_embedding[:, :T * J, :]  # ensure PE matches
         return self.transformer_encoder(x)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, T, J, D = x.shape
+        encoded = self.encode(x)  # (B, T×J, d_model)
+        decoded = self.reconstruction_head(encoded)  # (B, T×J, J*D)
+        return decoded.view(B, T, J, D)
 
 
 PAD_IDX = 0.0
