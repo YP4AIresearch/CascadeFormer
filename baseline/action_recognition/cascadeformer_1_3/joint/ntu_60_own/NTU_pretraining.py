@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import math
 from typing import Tuple
 
 POSITIONAL_UPPER_BOUND = 64
@@ -21,6 +22,11 @@ class GCNLayer(nn.Module):
         self.A = A
         self.linear = nn.Linear(in_features, out_features)
         self.residual = (in_features == out_features)
+        nn.init.kaiming_uniform_(self.linear.weight, a=math.sqrt(5))
+        if self.linear.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.linear.weight)
+            bound = 1 / math.sqrt(fan_in)
+            nn.init.uniform_(self.linear.bias, -bound, bound)
 
     def forward(self, x):
         A = self.A.to(x.device)
@@ -33,18 +39,19 @@ class GCNLayer(nn.Module):
 class SpatialGCN(nn.Module):
     def __init__(self, num_joints, input_dim, hidden_dim, output_dim):
         super().__init__()
-        self.A = self.build_adjacency(num_joints, NTU_BONES)
+        self.register_buffer('A', self.build_adjacency(num_joints, NTU_BONES))
         self.gcn1 = GCNLayer(input_dim, hidden_dim, self.A)
         self.gcn2 = GCNLayer(hidden_dim, hidden_dim, self.A)
         self.gcn3 = GCNLayer(hidden_dim, output_dim, self.A)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.1)        
 
     def forward(self, x):
         B, T, J, D = x.shape
         x = x.view(B * T, J, D)
-        x = self.relu(self.gcn1(x))
-        x = self.relu(self.gcn2(x))
-        x = self.gcn3(x)
+        x = self.relu(self.dropout(self.gcn1(x)))
+        x = self.relu(self.dropout(self.gcn2(x)))
+        x = self.gcn3(x)  # no activation after last GCN
         return x.view(B, T, J, -1)
 
     @staticmethod
@@ -82,7 +89,13 @@ class BaseT1(nn.Module):
         nn.init.trunc_normal_(self.pos_embedding, std=0.02)
 
         # Temporal transformer over (T × J) tokens
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model, 
+            nhead=nhead, 
+            dropout=0.1, # dropout added!
+            batch_first=True
+        )
+
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # Reconstruction head
@@ -172,6 +185,7 @@ def train_T1(masking_strategy, train_dataset, val_dataset, model: BaseT1, num_ep
 
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) # gradient clipping
             optimizer.step()
             train_loss += loss.item() * sequences.size(0)
 

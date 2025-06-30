@@ -168,6 +168,7 @@ def finetuning(
             loss = criterion(logits, labels)
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(params, max_norm=1.0)  # gradient clipping
             optimizer.step()
 
             total_loss += loss.item() * labels.size(0)
