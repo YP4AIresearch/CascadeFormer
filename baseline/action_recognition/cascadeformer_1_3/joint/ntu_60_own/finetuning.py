@@ -5,7 +5,7 @@ from tqdm import tqdm
 from typing import Tuple
 from typing import List
 from NTU_pretraining import BaseT1
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from transformers import get_cosine_schedule_with_warmup
 
 def load_T1(model_path: str, num_joints: int = 13, three_d: bool = False, d_model: int = 128, nhead: int = 4, num_layers: int = 2, freeze: bool = True,
                 device: str = 'cuda' if torch.cuda.is_available() else 'cpu') -> BaseT1:
@@ -95,23 +95,6 @@ def finetuning(
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
 ) -> Tuple[BaseT1, nn.Module, nn.Module]:
     
-    print(f"is T1 freezed? {freezeT1}")
-    print(f"unfreezing layers: {unfreeze_layers}")
-
-    
-    # freeze T1 parameters
-    if freezeT1:
-        for param in t1.parameters():
-            param.requires_grad = False
-
-        # unfreeze specific layers if specified
-        if unfreeze_layers is not None:
-            for layer in unfreeze_layers:
-                for param in t1.transformer_encoder.layers[layer].parameters():
-                    param.requires_grad = True
-    else:
-        for param in t1.parameters():
-            param.requires_grad = True
     t1.to(device)
     gait_head.to(device)
 
@@ -120,22 +103,23 @@ def finetuning(
     cross_attn = CrossAttention(d_model, nhead).to(device)
 
     # optimizer and loss
-    params = list(filter(lambda p: p.requires_grad, t1.parameters())) + \
-         list(t2.parameters()) + \
+    params = list(t2.parameters()) + \
          list(cross_attn.parameters()) + \
          list(gait_head.parameters())
 
     optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
-    
-    # use CosineAnnealingWarmRestarts scheduler instead of CosineAnnealingLR
-    scheduler = CosineAnnealingWarmRestarts(
+    steps_per_epoch = len(train_loader)
+    total_steps = num_epochs * steps_per_epoch
+    warmup_steps = int(0.1 * total_steps)  # 10% warmup
+
+    scheduler = get_cosine_schedule_with_warmup(
         optimizer,
-        T_0=10,      
-        T_mult=2,
-        eta_min=1e-6
+        num_warmup_steps=warmup_steps,
+        num_training_steps=total_steps,
     )
 
-    criterion = nn.CrossEntropyLoss()
+    smoothing_rate = 0.1
+    criterion = nn.CrossEntropyLoss(label_smoothing=smoothing_rate)
 
     train_losses, val_losses = [], []
     train_accuracies, val_accuracies = [], []
@@ -144,9 +128,31 @@ def finetuning(
         gait_head.train()
         t2.train()
         cross_attn.train()
+        t1_trainable = True
 
-        t1_trainable = any(p.requires_grad for p in t1.parameters())
-        t1.train(mode=t1_trainable)
+        # overwrite the freeze/finetune mode
+        # t1_trainable = True
+        # if epoch < 25:
+        #     t1.eval()
+        #     for param in t1.parameters():
+        #         param.requires_grad = False
+        #         t1_trainable = False
+        
+        # if epoch == 25:
+        #     print("[INFO] Unfreezing T1 and adding its parameters to optimizer...")
+
+        #     for param in t1.parameters():
+        #         param.requires_grad = True
+
+        #     # Get newly unfrozen params
+        #     new_params = [p for p in t1.parameters() if p.requires_grad and not any(p is q for group in optimizer.param_groups for q in group['params'])]
+
+        #     # Add them to the existing optimizer
+        #     if new_params:
+        #         optimizer.add_param_group({'params': new_params})
+            
+        #     t1_trainable = True
+                
 
         total_loss, correct, total = 0.0, 0, 0
         for i, (skeletons, labels) in enumerate(train_loader):
@@ -168,15 +174,12 @@ def finetuning(
             loss = criterion(logits, labels)
             optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(params, max_norm=1.0)  # gradient clipping
             optimizer.step()
+            scheduler.step()
 
             total_loss += loss.item() * labels.size(0)
             correct += (logits.argmax(dim=1) == labels).sum().item()
-            total += labels.size(0)
-
-            scheduler.step(epoch + i / len(train_loader))
-
+            total += labels.size(0)    
         train_acc = correct / total
         avg_loss = total_loss / total
         train_losses.append(avg_loss)
@@ -213,7 +216,6 @@ def finetuning(
         val_losses.append(val_avg_loss)
         val_accuracies.append(val_acc)
 
-        #scheduler.step(epoch)
         current_lr = optimizer.param_groups[0]['lr']
         print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
 

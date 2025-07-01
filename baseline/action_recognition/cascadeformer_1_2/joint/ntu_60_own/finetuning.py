@@ -128,29 +128,30 @@ def finetuning(
         gait_head.train()
         t2.train()
         cross_attn.train()
+        t1_trainable = True
 
         # overwrite the freeze/finetune mode
-        t1_trainable = True
-        if epoch < 25:
-            t1.eval()
-            for param in t1.parameters():
-                param.requires_grad = False
-                t1_trainable = False
+        # t1_trainable = True
+        # if epoch < 25:
+        #     t1.eval()
+        #     for param in t1.parameters():
+        #         param.requires_grad = False
+        #         t1_trainable = False
         
-        if epoch == 25:
-            print("[INFO] Unfreezing T1 and adding its parameters to optimizer...")
+        # if epoch == 25:
+        #     print("[INFO] Unfreezing T1 and adding its parameters to optimizer...")
 
-            for param in t1.parameters():
-                param.requires_grad = True
+        #     for param in t1.parameters():
+        #         param.requires_grad = True
 
-            # Get newly unfrozen params
-            new_params = [p for p in t1.parameters() if p.requires_grad and not any(p is q for group in optimizer.param_groups for q in group['params'])]
+        #     # Get newly unfrozen params
+        #     new_params = [p for p in t1.parameters() if p.requires_grad and not any(p is q for group in optimizer.param_groups for q in group['params'])]
 
-            # Add them to the existing optimizer
-            if new_params:
-                optimizer.add_param_group({'params': new_params})
+        #     # Add them to the existing optimizer
+        #     if new_params:
+        #         optimizer.add_param_group({'params': new_params})
             
-            t1_trainable = True
+        #     t1_trainable = True
                 
 
         total_loss, correct, total = 0.0, 0, 0

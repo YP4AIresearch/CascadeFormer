@@ -8,25 +8,22 @@ from typing import Tuple
 POSITIONAL_UPPER_BOUND = 64
 
 class SpatialTransformer(nn.Module):
-    """
-    Applies attention across the joint (spatial) dimension per frame.
-    Input shape: (B, T, J, D)
-    Output shape: (B, T, J, D)
-    """
     def __init__(self, num_joints: int, input_dim: int, d_model: int = 128, nhead: int = 4, num_layers: int = 1):
         super().__init__()
-        self.joint_embedding = nn.Linear(input_dim, d_model)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True)
+        assert d_model % num_joints == 0, "d_model must be divisible by num_joints"
+        self.per_joint_dim = d_model // num_joints
+
+        self.joint_embedding = nn.Linear(input_dim, self.per_joint_dim)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=self.per_joint_dim, nhead=nhead, batch_first=True)
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        self.output_proj = nn.Linear(d_model, input_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, T, J, D = x.shape
+        B, T, J, D = x.shape                      # (B, T, J, D)
         x = x.view(B * T, J, D)                   # (B*T, J, D)
-        x = self.joint_embedding(x)               # (B*T, J, d_model)
-        x = self.encoder(x)                       # (B*T, J, d_model)
-        x = self.output_proj(x)                   # (B*T, J, D)
-        return x.view(B, T, J, D)                 # (B, T, J, D)
+        x = self.joint_embedding(x)               # (B*T, J, d_model/J)
+        x = self.encoder(x)                       # (B*T, J, d_model/J)
+        x = x.view(B, T, -1)                      # (B, T, d_model)
+        return x
 
 
 class BaseT1(nn.Module):
@@ -36,28 +33,25 @@ class BaseT1(nn.Module):
         self.input_dim = 3 if three_d else 2
         self.d_model = d_model
 
-        # Spatial transformer over joints
-        NUM_SPATIAL_LAYERS = 4 
+        # Spatial transformer over joints (per frame)
+        NUM_SPATIAL_LAYERS = 1
         self.spatial_transformer = SpatialTransformer(
-            num_joints, 
-            self.input_dim, 
-            d_model=d_model, 
+            num_joints,
+            self.input_dim,
+            d_model=d_model,
             nhead=nhead,
             num_layers=NUM_SPATIAL_LAYERS
         )
-
-        # Linear projection to Transformer dimension (J*D → d_model)
-        self.joint_embedding = nn.Linear(num_joints * self.input_dim, d_model)
 
         # Positional encoding over time
         self.pos_embedding = nn.Parameter(torch.zeros(1, POSITIONAL_UPPER_BOUND, d_model))
         nn.init.trunc_normal_(self.pos_embedding, std=0.02)
 
-        # Temporal Transformer encoder
+        # Temporal transformer over sequence
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
-        # Reconstruction head (d_model → J*D)
+        # Reconstruction head
         self.reconstruction_head = nn.Linear(d_model, num_joints * self.input_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -71,29 +65,20 @@ class BaseT1(nn.Module):
         assert D == self.input_dim
         assert T <= POSITIONAL_UPPER_BOUND
 
-        x = self.spatial_transformer(x)                  # (B, T, J, D)
-        x = x.view(B, T, J * D)                          # Flatten joints → (B, T, J*D)
-
-        x = self.joint_embedding(x)                      # (B, T, d_model)
-        x = x + self.pos_embedding[:, :T, :]             # (B, T, d_model)
-
-        encoded = self.transformer_encoder(x)            # (B, T, d_model)
-        decoded = self.reconstruction_head(encoded)      # (B, T, J*D)
-        return decoded.view(B, T, J, D)                  # (B, T, J, D)
+        x = self.spatial_transformer(x)               # (B, T, d_model)
+        x = x + self.pos_embedding[:, :T, :]          # (B, T, d_model)
+        encoded = self.transformer_encoder(x)         # (B, T, d_model)
+        decoded = self.reconstruction_head(encoded)   # (B, T, J * D)
+        return decoded.view(B, T, J, D)               # (B, T, J, D)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         B, T, J, D = x.shape
         assert D == self.input_dim
         assert T <= POSITIONAL_UPPER_BOUND
 
-        x = self.spatial_transformer(x)                  # (B, T, J, D)
-        x = x.view(B, T, J * D)                          # (B, T, J*D)
-
-        x = self.joint_embedding(x)                      # (B, T, d_model)
-        x = x + self.pos_embedding[:, :T, :]             # (B, T, d_model)
-
-        return self.transformer_encoder(x)               # (B, T, d_model)    
-
+        x = self.spatial_transformer(x)               # (B, T, d_model)
+        x = x + self.pos_embedding[:, :T, :]          # (B, T, d_model)
+        return self.transformer_encoder(x)            # (B, T, d_model)
 
 PAD_IDX = 0.0
 

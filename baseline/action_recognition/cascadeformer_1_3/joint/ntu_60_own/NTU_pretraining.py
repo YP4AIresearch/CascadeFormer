@@ -16,12 +16,15 @@ NTU_BONES = [
     (0, 17), (17, 18), (18, 19), (19, 21), (21, 22),  # spine + head
     (19, 23), (12, 24)                                # hands/feet (optional)
 ]
+
 class GCNLayer(nn.Module):
     def __init__(self, in_features, out_features, A):
         super().__init__()
-        self.A = A
+        self.register_buffer('A', A) # (J, J) adjacency matrix
         self.linear = nn.Linear(in_features, out_features)
         self.residual = (in_features == out_features)
+
+        # Initialization
         nn.init.kaiming_uniform_(self.linear.weight, a=math.sqrt(5))
         if self.linear.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.linear.weight)
@@ -29,8 +32,7 @@ class GCNLayer(nn.Module):
             nn.init.uniform_(self.linear.bias, -bound, bound)
 
     def forward(self, x):
-        A = self.A.to(x.device)
-        Ax = torch.einsum('ij,bjd->bid', A, x)
+        Ax = torch.einsum('ij,btjd->btid', self.A, x)
         out = self.linear(Ax)
         if self.residual:
             out = out + x
@@ -39,20 +41,18 @@ class GCNLayer(nn.Module):
 class SpatialGCN(nn.Module):
     def __init__(self, num_joints, input_dim, hidden_dim, output_dim):
         super().__init__()
-        self.register_buffer('A', self.build_adjacency(num_joints, NTU_BONES))
-        self.gcn1 = GCNLayer(input_dim, hidden_dim, self.A)
-        self.gcn2 = GCNLayer(hidden_dim, hidden_dim, self.A)
-        self.gcn3 = GCNLayer(hidden_dim, output_dim, self.A)
+        A = self.build_adjacency(num_joints, NTU_BONES) # (J, J)
+        self.gcn1 = GCNLayer(input_dim, hidden_dim, A)
+        self.gcn2 = GCNLayer(hidden_dim, hidden_dim, A)
+        self.gcn3 = GCNLayer(hidden_dim, output_dim, A)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.1)        
+        self.dropout = nn.Dropout(p=0.1)
 
-    def forward(self, x):
-        B, T, J, D = x.shape
-        x = x.view(B * T, J, D)
+    def forward(self, x):  # x: (B, T, J, D)
         x = self.relu(self.dropout(self.gcn1(x)))
         x = self.relu(self.dropout(self.gcn2(x)))
-        x = self.gcn3(x)  # no activation after last GCN
-        return x.view(B, T, J, -1)
+        x = self.gcn3(x)
+        return x
 
     @staticmethod
     def build_adjacency(num_joints, bones, self_loops=True, normalize=True):
@@ -66,53 +66,51 @@ class SpatialGCN(nn.Module):
             A = D_inv_sqrt @ A @ D_inv_sqrt
         return A
 
+    
 class BaseT1(nn.Module):
-    def __init__(self, num_joints, three_d, d_model=128, nhead=4, num_layers=2):
+    def __init__(self, num_joints, three_d, d_model=400, nhead=4, num_layers=2):
         super().__init__()
         self.num_joints = num_joints
         self.input_dim = 3 if three_d else 2
         self.d_model = d_model
+        self.d_model_per_joint = d_model // num_joints
+        assert d_model % num_joints == 0, "d_model must be divisible by num_joints"
 
-        # Spatial GCN: acts like a learned joint-wise encoder
+        # Spatial GCN: D -> d_model / J
         self.spatial_gcn = SpatialGCN(
             num_joints, 
-            input_dim=self.input_dim, 
-            hidden_dim=d_model // 2, 
-            output_dim=d_model
+            input_dim=self.input_dim, # D
+            hidden_dim=self.d_model_per_joint,       # d_model / J
+            output_dim=self.d_model_per_joint        # d_model / J
         )
 
-        # Learnable joint identity embedding
-        self.joint_embedding = nn.Parameter(torch.randn(1, num_joints, d_model))
-
-        # Positional encoding (temporal, repeated for each joint)
-        self.pos_embedding = nn.Parameter(torch.zeros(1, POSITIONAL_UPPER_BOUND * num_joints, d_model))
+        # Positional encoding
+        self.pos_embedding = nn.Parameter(torch.zeros(1, POSITIONAL_UPPER_BOUND, d_model))
         nn.init.trunc_normal_(self.pos_embedding, std=0.02)
 
-        # Temporal transformer over (T × J) tokens
+        # Temporal transformer
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model, 
             nhead=nhead, 
             dropout=0.1, # dropout added!
             batch_first=True
         )
-
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # Reconstruction head
-        self.reconstruction_head = nn.Linear(d_model, self.input_dim)
+        self.reconstruction_head = nn.Linear(d_model, num_joints * self.input_dim)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         B, T, J, D = x.shape
-        x = self.spatial_gcn(x)  # (B, T, J, d_model)
-        x = x + self.joint_embedding  # broadcast: (1, J, d_model)
-        x = x.view(B, T * J, self.d_model)  # flatten to (B, T×J, d_model)
-        x = x + self.pos_embedding[:, :T * J, :]  # ensure PE matches
+        x = self.spatial_gcn(x)  # (B, T, J, d_model / J)
+        x = x.view(B, T, -1)  # (B, T, J * d_model / J) -> (B, T, d_model)
+        x = x + self.pos_embedding[:, :T, :]
         return self.transformer_encoder(x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, J, D = x.shape
-        encoded = self.encode(x)  # (B, T×J, d_model)
-        decoded = self.reconstruction_head(encoded)  # (B, T×J, J*D)
+        encoded = self.encode(x)  # (B, T, d_model)
+        decoded = self.reconstruction_head(encoded)
         return decoded.view(B, T, J, D)
 
 
