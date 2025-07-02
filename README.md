@@ -1,5 +1,13 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
+## Existing bug in data processing for NTU
+
+Issue: There are variable subject numbers (one or two) in the input of the network
+
+1. My approach: simply **take the first one and ditch the other**
+2. Official approach: *"We used a **heuristic method**. It's very simple (but not necessarily correct for all the samples). We consider the variance of the X, Y, and Z values of all the joints and add them up. We took the body with the higher value as the main subject."*
+3. Is this gonna make difference? Yes! **11 out of 60** classes involve two person interacting with each other.
+
 ## CascadeFormer 1.X series
 
 ![alt text](docs/CascadeFormer_1.png)
