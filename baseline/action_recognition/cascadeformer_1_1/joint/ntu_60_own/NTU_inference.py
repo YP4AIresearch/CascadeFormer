@@ -92,9 +92,9 @@ def main():
 
     # Set the device
 
-    hidden_size = 1024 # 256, 512, 768, 1024
+    hidden_size = 256      # 256, 512, 768, 1024
     n_heads = 8
-    num_layers = 8    # 4, 8, 12
+    num_layers = 8          # 4, 8, 12
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     print("=" * 50)
@@ -102,7 +102,7 @@ def main():
     print("=" * 50)
 
     # load the dataset
-    test_seq, test_lbl = load_cached_data('ntu_cache_test_sub_64_10.npz')    
+    test_seq, test_lbl = load_cached_data('CORRECTED_ntu_cache_test_sub_64_10.npz')    
     test_dataset = ActionRecognitionDataset(test_seq, test_lbl)
     
     # get the number of classes
@@ -114,18 +114,18 @@ def main():
     unfreeze_layers = "entire"
     if unfreeze_layers is None:
         print("************Freezing all layers")
-        t1 = load_T1("action_checkpoints/fixed_ntu/NTU_pretrained.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
+        t1 = load_T1("action_checkpoints/NTU_pretrained.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
     else:
-        t1 = load_T1("action_checkpoints/fixed_ntu/NTU_finetuned_T1.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
+        t1 = load_T1("action_checkpoints/NTU_finetuned_T1.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
         print(f"************Unfreezing layers: {unfreeze_layers}")
     
-    t2 = load_T2("action_checkpoints/fixed_ntu/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
+    t2 = load_T2("action_checkpoints/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
     # load the cross attention module
-    cross_attn = load_cross_attn("action_checkpoints/fixed_ntu/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device)
+    cross_attn = load_cross_attn("action_checkpoints/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device)
 
     # load the gait recognition head
     gait_head = GaitRecognitionHead(input_dim=hidden_size, num_classes=num_classes)
-    gait_head.load_state_dict(torch.load("action_checkpoints/fixed_ntu/NTU_finetuned_head.pt", map_location="cpu"))
+    gait_head.load_state_dict(torch.load("action_checkpoints/NTU_finetuned_head.pt", map_location="cpu"))
     gait_head = gait_head.to(device)
 
     print("Aha! All models loaded successfully!")

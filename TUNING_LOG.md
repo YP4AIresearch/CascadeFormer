@@ -199,14 +199,10 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **1024** | 8 | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 73.33% |
 | <tr><td colspan="11" align="center"> CascadeFormer 1.2 </td></tr> |
 | 30%, 64+1.0 | linear | **512** | 8 | **8** | no | 1e-4 | 50 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 50 | 71.79% |
-| 30%, 64+1.0 | linear | **512** | 8 | **8** | freeze-25-unfreeze | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | **72.10%** |
-
-| 30%, 64+1.0 | linear | **400, revised** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | running: CUDA_VISIBLE_DEVICES=1 nohup taskset -c 0-15 python3 baseline/action_recognition/cascadeformer_1_2/joint/ntu_60_own/NTU_main.py --pretrain --num_epochs 100 > correct_spatial.txt 2>&1 & |
-
+| 30%, 64+1.0 | linear | **512** | 8 | **8** | freeze-25-unfreeze | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | 72.10% |
+| 30%, 64+1.0 | linear | **400, revised** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | **73.56%** |
 | <tr><td colspan="11" align="center"> CascadeFormer 1.3 (GCN) </td></tr> |
-
-| 30%, 64+1.0 | linear | **400, revised** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | running: CUDA_VISIBLE_DEVICES=2 nohup taskset -c 16-30 python3 baseline/ac
-tion_recognition/cascadeformer_1_3/joint/ntu_60_own/NTU_main.py --pretrain --num_epochs 100 > correct_GCN.txt 2>&1 & |
+| 30%, 64+1.0 | linear | **400, revised** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | **68.98%** |
 
 
 

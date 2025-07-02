@@ -12,6 +12,9 @@ NUM_JOINTS_NTU = 25
 OFFICIAL_XSUB_TRAIN_SUBJECTS = [1, 2, 4, 5, 8, 9, 13, 14, 15, 16, 17, 18, 19, 25, 27, 28, 31, 34, 35, 38]
 OFFICIAL_XVIEW_TRAIN_CAMERAS = [2, 3]
 
+class EmptySkeletonError(Exception):
+    pass
+
 def normalize_scale(skeleton: np.ndarray) -> np.ndarray:
     """
     Normalize the skeleton so that the scale is invariant.
@@ -62,48 +65,51 @@ def transform_sequence(sequence):
     return normalize_scale(sequence).astype(np.float32)
 
 def read_ntu_skeleton_file(filepath: str, num_joints: int = NUM_JOINTS_NTU, T_out: int = 64, p: float = 1.0) -> np.ndarray:
-    """
-    Read an NTU RGB+D .skeleton file and apply trimmed-uniform random sampling
-    to get T_out frames (shape: [T_out, num_joints, 3]).
-
-    Parameters:
-        - filepath: path to the .skeleton file
-        - num_joints: number of joints (default = 25)
-        - T_out: number of frames to sample (e.g., 64)
-        - p: portion of total sequence to consider (e.g., 0.9 trims 5% on each end)
-
-    Returns:
-        - xyz_sampled: np.ndarray of shape (T_out, num_joints, 3)
-    """
     with open(filepath, "r") as f:
         total_frames = int(f.readline().strip())
-        xyz = np.zeros((total_frames, num_joints, 3), dtype=np.float32)
 
+        body_xyz = {}  # body_id -> list of (num_joints, 3) arrays
         for t in range(total_frames):
             body_cnt = int(f.readline().strip())
+            frame_bodies = {}
 
-            if body_cnt > 0:
+            for b in range(body_cnt):
                 _ = f.readline()  # body ID info
-                _ = f.readline()  # body metadata
+                _ = f.readline()  # metadata
 
-                for j in range(num_joints):
+                joints = []
+                for _ in range(num_joints):
                     vals = list(map(float, f.readline().strip().split()))
-                    xyz[t, j] = vals[:3]
+                    joints.append(vals[:3])
+                joints = np.array(joints, dtype=np.float32)  # shape (num_joints, 3)
 
-                # Skip other bodies
-                for _ in range(body_cnt - 1):
-                    _ = f.readline()
-                    _ = f.readline()
-                    for _ in range(num_joints):
-                        _ = f.readline()
-    
-    """
-        trimmed-uniform random sampling adapted from SkateFormer (https://arxiv.org/abs/2403.09508)
-    """
-    # Trim beginning and end based on p
+                frame_bodies[b] = joints
+
+            # accumulate each body's data
+            for b, joints in frame_bodies.items():
+                if b not in body_xyz:
+                    body_xyz[b] = []
+                body_xyz[b].append(joints)
+
+    # If no bodies at all
+    if len(body_xyz) == 0:
+        raise EmptySkeletonError(f"No bodies found in skeleton file: {filepath}")
+
+    # Convert per-body list to array: (T, J, 3)
+    body_motions = {}
+    for b, seq in body_xyz.items():
+        seq_arr = np.stack(seq, axis=0)
+        # "motion" captures variance over time, summed over joints and coords
+        motion = np.var(seq_arr, axis=0).sum()  
+        body_motions[b] = motion
+
+    best_body = max(body_motions, key=body_motions.get)
+    xyz = np.stack(body_xyz[best_body], axis=0)  # shape (T, J, 3)
+
+    # trimmed-uniform sampling
+    total_frames = xyz.shape[0]
     valid_len = int(total_frames * p)
     if valid_len < T_out:
-        # Repeat to make sure we can sample T_out frames
         repeats = (T_out + valid_len - 1) // valid_len
         xyz = np.tile(xyz, (repeats + 1, 1, 1))
         total_frames = xyz.shape[0]
@@ -111,21 +117,18 @@ def read_ntu_skeleton_file(filepath: str, num_joints: int = NUM_JOINTS_NTU, T_ou
 
     start = int((total_frames - valid_len) / 2)
     end = start + valid_len
+    trimmed_xyz = xyz[start:end]
 
-    trimmed_xyz = xyz[start:end]  # Shape: [valid_len, V, 3]
-
-    # Divide into T_out intervals and sample one frame from each
     interval_len = valid_len / T_out
     sampled = []
     for i in range(T_out):
         interval_start = int(i * interval_len)
         interval_end = int((i + 1) * interval_len)
-        if interval_end > valid_len:
-            interval_end = valid_len
+        interval_end = min(interval_end, valid_len)
         idx = random.randint(interval_start, max(interval_start, interval_end - 1))
         sampled.append(trimmed_xyz[idx])
 
-    xyz_sampled = np.stack(sampled, axis=0)  # (T_out, V, 3)
+    xyz_sampled = np.stack(sampled, axis=0)  # (T_out, J, 3)
     return xyz_sampled.astype(np.float32)
 
 
@@ -151,7 +154,13 @@ def build_ntu_skeleton_lists_xsub(
         """
             Here, start reading data + apply augmentations
         """
-        skeleton = read_ntu_skeleton_file(filepath, num_joints)
+
+        try:
+            skeleton = read_ntu_skeleton_file(filepath, num_joints)
+        except EmptySkeletonError:
+            print(f"Skipping empty skeleton file: {filepath}")
+            continue
+
         skeleton = skeleton - skeleton[:, 0:1, :] # hip centering
 
         # always apply normalization
@@ -167,11 +176,11 @@ def build_ntu_skeleton_lists_xsub(
 
     # cache them
     if is_train and augment:
-        save_cached_data(sequences, labels, path="ntu_cache_train_sub_64_10_augmented.npz")
+        save_cached_data(sequences, labels, path="CORRECTED_ntu_cache_train_sub_64_10_augmented.npz")
     elif is_train and not augment:
-        save_cached_data(sequences, labels, path="ntu_cache_train_sub_64_10_validation.npz")
+        save_cached_data(sequences, labels, path="CORRECTED_ntu_cache_train_sub_64_10_validation.npz")
     else:
-        save_cached_data(sequences, labels, path="ntu_cache_test_sub_64_10.npz")
+        save_cached_data(sequences, labels, path="CORRECTED_ntu_cache_test_sub_64_10.npz")
 
     return sequences, labels
 
@@ -267,24 +276,17 @@ if __name__ == "__main__":
     import time
     t_start = time.time()
     train_seq, train_lbl = build_ntu_skeleton_lists_xsub('nturgb+d_skeletons', is_train=True, augment=True)
-    all_seq_clean, all_lbl_clean = build_ntu_skeleton_lists_xsub('nturgb+d_skeletons', is_train=True, augment=False)
-    _, _, val_seq, val_lbl = split_train_val(all_seq_clean, all_lbl_clean, val_ratio=0.15)
     test_seq, test_lbl = build_ntu_skeleton_lists_xsub('nturgb+d_skeletons', is_train=False, augment=False)
     t_end = time.time()
 
     print(f"Time taken: {t_end - t_start:.2f} seconds")
     print(f"Train sequences: {len(train_seq)}, Train labels: {len(train_lbl)}")
-    print(f"Validation sequences: {len(val_seq)}, Validation labels: {len(val_lbl)}")
     print(f"Sample train sequence shape: {train_seq[0].shape}, dtype: {train_seq[0].dtype}")
-    print(f"Sample validation sequence shape: {val_seq[0].shape}, dtype: {val_seq[0].dtype}")  
 
     train_dataset = ActionRecognitionDataset(train_seq, train_lbl)
-    val_dataset = ActionRecognitionDataset(val_seq, val_lbl)
     test_dataset = ActionRecognitionDataset(test_seq, test_lbl)
 
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
     print(f"Train DataLoader: {len(train_loader)} batches")
-    print(f"Validation DataLoader: {len(val_loader)} batches")
     print(f"Test DataLoader: {len(test_loader)} batches")

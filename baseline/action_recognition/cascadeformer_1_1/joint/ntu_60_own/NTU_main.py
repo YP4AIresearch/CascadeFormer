@@ -43,7 +43,7 @@ def main():
     print(f"pretrain?: {pretrain}")
 
     # transformer parameters
-    hidden_size = 1024   # 256 -> 512 -> 768 -> 1024
+    hidden_size = 256   # 256 -> 512 -> 768 -> 1024
     n_heads = 8
     num_layers = 8      # 4 -> 8 -> 12 -> 16
     print(f"hidden_size: {hidden_size}")
@@ -61,7 +61,7 @@ def main():
     # load the dataset
     import time
     t_start = time.time()
-    all_seq_clean, all_lbl_clean = load_cached_data('ntu_cache_train_sub_64_10_augmented.npz')
+    all_seq_clean, all_lbl_clean = load_cached_data('CORRECTED_ntu_cache_train_sub_64_10_augmented.npz')
     train_seq, train_lbl, val_seq, val_lbl = split_train_val(all_seq_clean, all_lbl_clean, val_ratio=0.20)
     t_end = time.time()
     print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")

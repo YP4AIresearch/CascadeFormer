@@ -1,12 +1,16 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
-## Existing bug in data processing for NTU
+## Previous bug in data processing for NTU (FIXED!)
 
 Issue: There are variable subject numbers (one or two) in the input of the network
 
-1. My approach: simply **take the first one and ditch the other**
+1. My (previous) approach: simply **take the first one and ditch the other**
 2. Official approach: *"We used a **heuristic method**. It's very simple (but not necessarily correct for all the samples). We consider the variance of the X, Y, and Z values of all the joints and add them up. We took the body with the higher value as the main subject."*
-3. Is this gonna make difference? Yes! **11 out of 60** classes involve two person interacting with each other.
+3. Is this gonna make any difference? Yes! **11 out of 60** classes involve two person interacting with each other.
+
+## biomechanics reparameterization (theta, phi, length)
+
+Coming soon!
 
 ## CascadeFormer 1.X series
 
@@ -22,7 +26,7 @@ Issue: There are variable subject numbers (one or two) in the input of the netwo
 | ------- | ------- | ---------- | ------- | ------ | ------- | ------ | ------- |
 | Penn Action | 2,326 | 13, 2D | 93.4% (HDM-BG) | **94.66%** [checkpoint](https://drive.google.com/drive/folders/1Za50ZE9ZEKdEps_ZE-JIbatTpLuMW83k) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1Jl7lIVcbqw6W2xzvf09nVRERXHIFrjXn); **94.01%** [checkpoint](https://drive.google.com/drive/folders/1jAlH7pf-zaHy7CVIF3MAmiZ5mMtDw2j-) | N/A |
 | N-UCLA | 1,494 | 20, 3D | 98.3% (SkateFormer) | **88.79%** | **91.16%** [checkpoint](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [checkpoint](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) | **90.73%** [checkpoint](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) | N/A |
-| NTU/CS | 56,880 | 25, 3D | 92.6% (SkateFormer) | **75.22%** | **74.10%** | **72.10%; running a revised version** | **running** |
+| NTU/CS | 56,880 | 25, 3D | 92.6% (SkateFormer) | **75.22%** | **74.10%** | **73.56%** | **68.98%** |
 | NTU/CV | 56,880 | 25, 3D | 97.0% (SkateFormer) | N/A | N/A | N/A | N/A |
 
 ## Ablation Study: bone representation (Penn Action and NTU/CS)
