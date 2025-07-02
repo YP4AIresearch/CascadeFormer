@@ -103,7 +103,8 @@ def finetuning(
     cross_attn = CrossAttention(d_model, nhead).to(device)
 
     # optimizer and loss
-    params = list(t2.parameters()) + \
+    params = list(t1.parameters()) + \
+         list(t2.parameters()) + \
          list(cross_attn.parameters()) + \
          list(gait_head.parameters())
 
@@ -128,6 +129,7 @@ def finetuning(
         gait_head.train()
         t2.train()
         cross_attn.train()
+        t1.train()
         t1_trainable = True
 
         # overwrite the freeze/finetune mode

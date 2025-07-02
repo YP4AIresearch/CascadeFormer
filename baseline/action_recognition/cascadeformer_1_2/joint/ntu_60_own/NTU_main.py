@@ -200,8 +200,7 @@ def main():
     torch.save(train_cross_attn.state_dict(), "action_checkpoints/fixed_ntu/NTU_finetuned_cross_attn.pt")
     torch.save(train_head.state_dict(), "action_checkpoints/fixed_ntu/NTU_finetuned_head.pt")
 
-    if any(param.requires_grad for param in t1.parameters()):
-        torch.save(t1.state_dict(), "action_checkpoints/fixed_ntu/NTU_finetuned_T1.pt")
+    torch.save(t1.state_dict(), "action_checkpoints/fixed_ntu/NTU_finetuned_T1.pt")
 
     print("Aha! finetuned models saved successfully!")
 

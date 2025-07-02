@@ -1,18 +1,5 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
-## My hypothesis of the major bottlenecks so far
-
-1. lack of spatial inductive bias - need to tune the spatial feature extraction **much MORE**!
-2. still not sure how to use T1 during finetuning - frozen OR finetuned OR freeze-then-unfreeze?
-3. spatial transformer is very unstable (collapse after overfitting):
-
-```python
-Epoch 87/100: LR = 0.000013, Train Acc = 0.9852, Val Acc = 0.7531
-Epoch 88/100: LR = 0.000011, Train Acc = 0.9856, Val Acc = 0.7606
-Epoch 89/100: LR = 0.000009, Train Acc = 0.7424, Val Acc = 0.0167
-Epoch 90/100: LR = 0.000008, Train Acc = 0.0154, Val Acc = 0.0165
-```
-
 ## CascadeFormer 1.X series
 
 ![alt text](docs/CascadeFormer_1.png)
