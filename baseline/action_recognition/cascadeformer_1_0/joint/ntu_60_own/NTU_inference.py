@@ -1,21 +1,12 @@
-import os
-import glob
-import numpy as np
 import torch
 from sklearn.metrics import accuracy_score
-import seaborn as sns
-import matplotlib.pyplot as plt
 import argparse
-from typing import List, Tuple
-from itertools import combinations
+from typing import Tuple
 from torch import nn
-from torch import optim
-from torch import Tensor
 from torch.utils.data import DataLoader
-from torch.nn import functional as F
 from base_dataset import ActionRecognitionDataset
 from penn_utils import set_seed, collate_fn_inference
-from NTU_utils import build_ntu_skeleton_lists_xsub, split_train_val, NUM_JOINTS_NTU
+from NTU_utils import build_ntu_skeleton_lists_xsub, NUM_JOINTS_NTU
 from finetuning import load_T1, load_T2, load_cross_attn, GaitRecognitionHead
 
 def evaluate(
@@ -87,7 +78,6 @@ def main():
     set_seed(42)
 
     args = parse_args()
-    root_dir = args.root_dir
     # get the number of classes from the root_dir by taking the trailing number
     batch_size = args.batch_size
     device = args.device
@@ -126,18 +116,18 @@ def main():
     unfreeze_layers = "entire"
     if unfreeze_layers is None:
         print("************Freezing all layers")
-        t1 = load_T1("action_checkpoints/NTU_pretrained.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
+        t1 = load_T1("action_checkpoints/NTU_NONE/NTU_pretrained.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
     else:
-        t1 = load_T1("action_checkpoints/NTU_finetuned_T1.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
+        t1 = load_T1("action_checkpoints/NTU_NONE/NTU_finetuned_T1.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
         print(f"************Unfreezing layers: {unfreeze_layers}")
-    
-    t2 = load_T2("action_checkpoints/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
+
+    t2 = load_T2("action_checkpoints/NTU_NONE/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
     # load the cross attention module
-    cross_attn = load_cross_attn("action_checkpoints/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device)
+    cross_attn = load_cross_attn("action_checkpoints/NTU_NONE/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device)
 
     # load the gait recognition head
     gait_head = GaitRecognitionHead(input_dim=hidden_size, num_classes=num_classes)
-    gait_head.load_state_dict(torch.load("action_checkpoints/NTU_finetuned_head.pt", map_location="cpu"))
+    gait_head.load_state_dict(torch.load("action_checkpoints/NTU_NONE/NTU_finetuned_head.pt", map_location="cpu"))
     gait_head = gait_head.to(device)
 
     print("Aha! All models loaded successfully!")

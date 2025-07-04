@@ -8,9 +8,9 @@ Issue: There are variable subject numbers (one or two) in the input of the netwo
 2. Official approach: *"We used a **heuristic method**. It's very simple (but not necessarily correct for all the samples). We consider the variance of the X, Y, and Z values of all the joints and add them up. We took the body with the higher value as the main subject."*
 3. Is this gonna make any difference? Yes! **11 out of 60** classes involve two person interacting with each other.
 
-## biomechanics reparameterization (theta, phi, length)
+## biomechanics-aware frame embedding 
 
-Coming soon!
+![alt text](docs/bioaware.jpg)
 
 ## CascadeFormer 1.X series
 

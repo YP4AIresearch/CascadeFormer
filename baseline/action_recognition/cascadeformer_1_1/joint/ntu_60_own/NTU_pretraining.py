@@ -203,11 +203,6 @@ def train_T1(masking_strategy, train_dataset, val_dataset, model: BaseT1, num_ep
             best_model_state_dict = copy.deepcopy(model.state_dict())
             tqdm.write(f"[Epoch {epoch+1}] New best validation loss: {val_loss:.4f}")
 
-        # Save checkpoint every N epochs
-        if (epoch + 1) % save_every == 0:
-            torch.save(model.state_dict(), f"action_checkpoints/fixed_ntu/T1_epoch_{epoch+1}.pt")
-
-
         tqdm.write(f"[Epoch {epoch+1}/{num_epochs}] Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
 

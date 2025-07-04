@@ -1,15 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-from penn_utils import collate_fn_pairs
 from tqdm import tqdm
-from typing import Tuple, Dict
-from pretraining import BaseT1
-import matplotlib.pyplot as plt
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from transformers import get_cosine_schedule_with_warmup
+from typing import Tuple
+from typing import List
+from NTU_pretraining import BaseT1
 
 def load_T1(model_path: str, num_joints: int = 13, three_d: bool = False, d_model: int = 128, nhead: int = 4, num_layers: int = 2, freeze: bool = True,
                 device: str = 'cuda' if torch.cuda.is_available() else 'cpu') -> BaseT1:
@@ -58,7 +53,7 @@ class BaseT2(nn.Module):
     def __init__(self, d_model=128, nhead=4, num_layers=2):
         super(BaseT2, self).__init__()
         self.encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True),
+            nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=0.1, batch_first=True),
             num_layers=num_layers
         )
     
@@ -76,14 +71,14 @@ class GaitRecognitionHead(nn.Module):
         A simple linear head for gait recognition.
         The model consists of a linear layer that maps the output of the transformer to the number of classes.
     """
-    def __init__(self, input_dim, num_classes):
+    def __init__(self, input_dim, num_classes, dropout=0.5):
         super().__init__()
+        self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(input_dim, num_classes)
 
     def forward(self, x):
         return self.fc(x)
 
-from typing import List
 def finetuning(
     train_loader: DataLoader,
     val_loader: DataLoader,
@@ -94,6 +89,7 @@ def finetuning(
     num_layers: int = 2,
     num_epochs: int = 200,
     lr: float = 1e-5,
+    wd: float = 1e-2,
     freezeT1: bool = True,
     unfreeze_layers: List[int] = None,
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -129,24 +125,11 @@ def finetuning(
          list(cross_attn.parameters()) + \
          list(gait_head.parameters())
 
-    #optimizer = optim.Adam(params, lr=lr, weight_decay=1e-4)
-    optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=1e-4)
-    num_training_steps = num_epochs
-    num_warmup_steps = int(0.05 * num_training_steps)
-
-    scheduler = get_cosine_schedule_with_warmup(
-        optimizer,
-        num_warmup_steps=num_warmup_steps,
-        num_training_steps=num_training_steps,
-    )
+    optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+    
 
     criterion = nn.CrossEntropyLoss()
-
-    # scheduler = CosineAnnealingLR(
-    #     optimizer,
-    #     T_max=num_epochs,
-    #     eta_min=1e-7
-    # )
 
     train_losses, val_losses = [], []
     train_accuracies, val_accuracies = [], []
@@ -159,9 +142,8 @@ def finetuning(
         t1_trainable = any(p.requires_grad for p in t1.parameters())
         t1.train(mode=t1_trainable)
 
-
         total_loss, correct, total = 0.0, 0, 0
-        for skeletons, labels in train_loader:
+        for i, (skeletons, labels) in enumerate(train_loader):
             skeletons, labels = skeletons.to(device), labels.to(device)
             
             if t1_trainable:
@@ -186,15 +168,17 @@ def finetuning(
             correct += (logits.argmax(dim=1) == labels).sum().item()
             total += labels.size(0)
 
+            #cheduler.step(epoch + i / len(train_loader))
+
         train_acc = correct / total
         avg_loss = total_loss / total
         train_losses.append(avg_loss)
-        train_accuracies.append(train_acc)
-        
-        # learning rate scheduler step
-        scheduler.step()
+        train_accuracies.append(train_acc) 
+
+
 
         # Validation
+        t1.eval()
         gait_head.eval()
         t2.eval()
         cross_attn.eval()
@@ -219,36 +203,14 @@ def finetuning(
                 val_total += labels.size(0)
 
         val_acc = val_correct / val_total
-        val_avg_loss = val_total_loss / total
+        val_avg_loss = val_total_loss / val_total
 
         val_losses.append(val_avg_loss)
         val_accuracies.append(val_acc)
 
-        print(f"Epoch {epoch+1}/{num_epochs}: Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
-
-
-    # Plotting the training and validation losses
-    plt.figure(figsize=(12, 5))
-
-    plt.subplot(1, 2, 1)
-    plt.plot(train_losses, label='Train Loss')
-    plt.plot(val_losses, label='Val Loss')
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Training and Validation Loss")
-    plt.legend()
-
-    plt.subplot(1, 2, 2)
-    plt.plot(train_accuracies, label='Train Acc')
-    plt.plot(val_accuracies, label='Val Acc')
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.title("Training and Validation Accuracy")
-    plt.legend()
-
-    plt.tight_layout()
-    # save the figure
-    plt.savefig("figures/finetuning_loss_accuracy.png")
+        scheduler.step() # Step the scheduler after each epoch
+        current_lr = optimizer.param_groups[0]['lr']
+        print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
 
     # return T2, cross_attn, and gait_head
     return t2, cross_attn, gait_head

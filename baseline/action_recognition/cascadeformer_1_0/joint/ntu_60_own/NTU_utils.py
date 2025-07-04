@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import glob
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 from sklearn.model_selection import train_test_split
 from base_dataset import ActionRecognitionDataset
 from torch.utils.data import DataLoader
