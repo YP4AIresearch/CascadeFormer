@@ -5,28 +5,26 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from typing import Tuple
 import copy
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from transformers import get_cosine_schedule_with_warmup
 import math
+from math import ceil
 
 POSITIONAL_UPPER_BOUND = 64
 BONE_PAIRS = [
     # Spine
-    (0, 1), (1, 2), (2, 3),         # SpineBase → SpineMid → Neck → Head
-    (2, 20),                        # Neck → SpineShoulder
+    (0, 1), (1, 2), (2, 3), (2, 20),                        
 
     # Left arm
-    (20, 4), (4, 5), (5, 6), (6, 7),        # SpineShoulder → LShoulder → LElbow → LWrist → LHand
-    (7, 21), (7, 22),                       # LHand → LHandTip, LThumb
+    (20, 4), (4, 5), (5, 6), (6, 7),(7, 21), (7, 22),
 
     # Right arm
-    (20, 8), (8, 9), (9, 10), (10, 11),     # SpineShoulder → RShoulder → RElbow → RWrist → RHand
-    (11, 23), (11, 24),                    # RHand → RHandTip, RThumb
+    (20, 8), (8, 9), (9, 10), (10, 11),(11, 23), (11, 24),
 
     # Left leg
-    (0, 12), (12, 13), (13, 14), (14, 15),  # SpineBase → LHip → LKnee → LAnkle → LFoot
+    (0, 12), (12, 13), (13, 14), (14, 15),
 
     # Right leg
-    (0, 16), (16, 17), (17, 18), (18, 19)   # SpineBase → RHip → RKnee → RAnkle → RFoot
+    (0, 16), (16, 17), (17, 18), (18, 19)
 ]
 
 class BiomechanicsReparameterization(nn.Module):
@@ -196,8 +194,13 @@ def train_T1(masking_strategy, train_dataset, val_dataset, model: BaseT1, num_ep
 
     criterion = nn.MSELoss(reduction='none')
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    scheduler = CosineAnnealingWarmRestarts(
-        optimizer, T_0=10, T_mult=2, eta_min=1e-6
+
+    total_steps = num_epochs * ceil(len(train_dataset) / batch_size)
+    scheduler = get_cosine_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=int(0.05 * total_steps),
+        num_training_steps=total_steps,
+        num_cycles=0.5,
     )
 
     best_model_state_dict = None

@@ -43,9 +43,9 @@ def main():
     print(f"pretrain?: {pretrain}")
 
     # transformer parameters
-    hidden_size = 256
-    n_heads = 8
-    num_layers = 8    
+    hidden_size = 768 # 256, 512, 768
+    n_heads = 16
+    num_layers = 16
     print(f"hidden_size: {hidden_size}")
     print(f"n_heads: {n_heads}")
     print(f"num_layers: {num_layers}")

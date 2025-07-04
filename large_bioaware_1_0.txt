@@ -1,0 +1,22 @@
+nohup: ignoring input
+pretrain?: True
+hidden_size: 768
+n_heads: 16
+num_layers: 16
+batch_size: 64
+==================================================
+[INFO] Starting NTU dataset processing on cuda...
+==================================================
+[INFO] Time taken to load NTU skeletons: 3.03 seconds
+[INFO] Number of classes: 60
+====================================================================================================
+
+==========================
+Starting Pretraining...
+==========================
+[INFO] Mask ratio: 30.0%
+[INFO] Mask ratio: 30.0%
+[INFO] train/val split ratio: 5.0%
+  0%|          | 0/400 [00:00<?, ?it/s]/home/peng.1007/miniconda3/envs/BPMT_env/lib/python3.10/site-packages/torch/optim/lr_scheduler.py:243: UserWarning: The epoch parameter in `scheduler.step()` was not necessary and is being deprecated where possible. Please use `scheduler.step()` to step the scheduler. During the deprecation, if epoch is different from None, the closed form is used instead of the new chainable form, where available. Please open an issue if you are unable to replicate your use case: https://github.com/pytorch/pytorch/issues/new/choose.
+  warnings.warn(EPOCH_DEPRECATION_WARNING, UserWarning)
+                                         0%|          | 0/400 [01:38<?, ?it/s]                                         0%|          | 0/400 [01:38<?, ?it/s]  0%|          | 1/400 [01:38<10:52:48, 98.17s/it]                                                    0%|          | 1/400 [03:18<10:52:48, 98.17s/it]                                                    0%|          | 1/400 [03:18<10:52:48, 98.17s/it]  0%|          | 2/400 [03:18<10:59:17, 99.39s/it]

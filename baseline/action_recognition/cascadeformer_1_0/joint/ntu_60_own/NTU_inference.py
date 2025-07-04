@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from sklearn.metrics import accuracy_score
 import argparse
@@ -5,9 +6,15 @@ from typing import Tuple
 from torch import nn
 from torch.utils.data import DataLoader
 from base_dataset import ActionRecognitionDataset
-from penn_utils import set_seed, collate_fn_inference
-from NTU_utils import build_ntu_skeleton_lists_xsub, NUM_JOINTS_NTU
+from penn_utils import set_seed
+from NTU_utils import NUM_JOINTS_NTU
 from finetuning import load_T1, load_T2, load_cross_attn, GaitRecognitionHead
+
+def load_cached_data(path="ntu_cache_train_sub.npz"):
+    data = np.load(path, allow_pickle=True)
+    sequences = list(data["sequences"])
+    labels = list(data["labels"])
+    return sequences, labels
 
 def evaluate(
     data_loader: DataLoader,
@@ -84,9 +91,9 @@ def main():
 
     # Set the device
 
-    hidden_size = 512 # 256, 512
+    hidden_size = 256      # 256, 512, 768, 1024
     n_heads = 8
-    num_layers = 12    # 4, 8, 12
+    num_layers = 8          # 4, 8, 12
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     print("=" * 50)
@@ -94,23 +101,13 @@ def main():
     print("=" * 50)
 
     # load the dataset
-    test_seq, test_lbl = build_ntu_skeleton_lists_xsub('nturgb+d_skeletons', is_train=False)
-
-    assert len(test_seq) == 16560
-
-    #train_seq, train_lbl, val_seq, val_lbl = split_train_val(train_seq, train_lbl, val_ratio=0.05)
-    
+    test_seq, test_lbl = load_cached_data('CORRECTED_ntu_cache_test_sub_64_10.npz')    
     test_dataset = ActionRecognitionDataset(test_seq, test_lbl)
     
     # get the number of classes
     num_classes = len(set(test_lbl))
 
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        collate_fn=collate_fn_inference
-    )
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size, shuffle=False)
 
     # load T1 model
     unfreeze_layers = "entire"
@@ -120,7 +117,7 @@ def main():
     else:
         t1 = load_T1("action_checkpoints/NTU_NONE/NTU_finetuned_T1.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
         print(f"************Unfreezing layers: {unfreeze_layers}")
-
+    
     t2 = load_T2("action_checkpoints/NTU_NONE/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
     # load the cross attention module
     cross_attn = load_cross_attn("action_checkpoints/NTU_NONE/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device)

@@ -205,6 +205,10 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **400, revised** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | **68.98%** |
 
 
+| <tr><td colspan="11" align="center"> CascadeFormer 1.1 but biomechanics-aware frame embeddings </td></tr> |
+| 30%, 64+1.0, bioaware | linear | **256** | **8** | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, batch-level | 100 | **73.36%** |
+
+| 30%, 64+1.0, bioaware | linear | **768** | **16** | **16** | no | 1e-4, CosineAnnealingLR | 500 | 3e-5, wd=1e-2, CosineAnnealingLR, batch-level | 500 | **running** |
 
 
 
