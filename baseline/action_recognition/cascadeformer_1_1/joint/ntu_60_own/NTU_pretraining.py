@@ -139,8 +139,6 @@ def train_T1(masking_strategy, train_dataset, val_dataset, model: BaseT1, num_ep
 
     best_model_state_dict = None
     best_val_loss = float('inf')
-    save_every = 100  # save every N epochs
-
     train_losses = []
     val_losses = []
 
