@@ -203,20 +203,23 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **400, revised** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | **73.56%** |
 | <tr><td colspan="11" align="center"> CascadeFormer 1.3 (GCN) </td></tr> |
 | 30%, 64+1.0 | linear | **400, revised** | 8 | **8** | no | 1e-4 | 100 | 2.6e-4, wd=5e-3, CosineAnnealingLR, batch-level | 100 | **68.98%** |
-
-
 | <tr><td colspan="11" align="center"> CascadeFormer 1.1 but biomechanics-aware frame embeddings </td></tr> |
 | 30%, 64+1.0, bioaware | linear | **256** | **8** | **8** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, batch-level | 100 | **73.36%** |
-
-| 30%, 64+1.0, bioaware | linear | **768** | **16** | **16** | no | 1e-4, CosineAnnealingLR | 500 | 3e-5, wd=1e-2, CosineAnnealingLR, batch-level | 500 | **running** |
-
-
-
-
+| 30%, 64+1.0, bioaware | linear | **768** | **16** | **16** | no | 1e-4, CosineAnnealingLR | 400 | 3e-5, wd=1e-2, CosineAnnealingLR, batch-level | 100 | TBD |
+| 30%, 64+1.0, bioaware | linear | **768** | **16** | **16** | no | 1e-4, CosineAnnealingLR | 400 | 3e-5, wd=1e-2, CosineAnnealingLR, batch-level | 200 | TBD |
+| 30%, 64+1.0, bioaware | linear | **768** | **16** | **16** | no | 1e-4, CosineAnnealingLR | 400 | 3e-5, wd=1e-2, CosineAnnealingLR, batch-level | 400 | **running** - CUDA_VISIBLE_DEVICES=1 nohup taskset -c 21-30 python3 baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/NTU_main.py --pretrain --num_epochs 400 > large_bioaware_1_0.txt 2>&1 & |
 | <tr><td colspan="11" align="center"> CascadeFormer 2.0 </td></tr> |
 | 30%, 64+1.0 | linear | **800** | 8 | **2** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 54.48% |
 | 30%, 64+1.0 | linear | **800** | 8 | **2** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 58.29%, 20% validation |
 | 30%, 64+1.0 | linear | **800** | 8 | **4** | no | 1e-4 | 25 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 25 | 58.29%, 20% validation |
+
+
+Hyperformer reproduction:
+
+```bash
+
+```
+
 
 
 

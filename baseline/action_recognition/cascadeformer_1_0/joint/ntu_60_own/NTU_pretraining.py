@@ -94,8 +94,8 @@ class BaseT1(nn.Module):
         self.d_model = d_model
 
         # Final linear projection to Transformer dimension
-        #self.joint_embedding = nn.Linear(num_joints * self.input_dim, d_model)
-        self.joint_embedding = BiomechanicsReparameterization(BONE_PAIRS, d_model)
+        self.joint_embedding = nn.Linear(num_joints * self.input_dim, d_model)
+        #self.joint_embedding = BiomechanicsReparameterization(BONE_PAIRS, d_model)
 
         # Learnable positional encoding over time
         self.pos_embedding = nn.Parameter(torch.zeros(1, POSITIONAL_UPPER_BOUND, d_model))
@@ -122,7 +122,7 @@ class BaseT1(nn.Module):
         # JointConv over (B*T, D, J)
         # x = x.reshape(B * T, J, D).permute(0, 2, 1)     # → (B*T, D, J)
         # x = self.joint_conv(x)                          # → (B*T, D, J)
-        # x = x.reshape(B, T, J * D)      # → (B, T, J*D)
+        x = x.reshape(B, T, J * D)      # → (B, T, J*D)
 
         # frame embedding and positional encoding
         x = self.joint_embedding(x)               # → (B, T, d_model)
