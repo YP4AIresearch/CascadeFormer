@@ -1,0 +1,18 @@
+nohup: ignoring input
+pretrain?: False
+hidden_size: 768
+n_heads: 16
+num_layers: 16
+batch_size: 64
+==================================================
+[INFO] Starting NTU dataset processing on cuda...
+==================================================
+[INFO] Time taken to load NTU skeletons: 4.38 seconds
+====================================================================================================
+====================================================================================================
+====================================================================================================
+pretrained model loaded successfully!
+[INFO] finetuning the entire T1 model...
+is T1 freezed? False
+unfreezing layers: None
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [09:22<2:58:09, 562.62s/it]

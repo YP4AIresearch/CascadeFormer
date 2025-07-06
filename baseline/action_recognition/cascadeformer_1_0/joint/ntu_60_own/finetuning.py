@@ -143,15 +143,27 @@ def finetuning(
         t1.train(mode=t1_trainable)
 
         total_loss, correct, total = 0.0, 0, 0
-        for i, (skeletons, labels) in enumerate(train_loader):
+        for i, (skeletons, labels, _) in enumerate(train_loader):
             skeletons, labels = skeletons.to(device), labels.to(device)
-            
+
+            # Preprocessing sequences from CTR-GCN-style input
+            B, C, T, V, M = skeletons.shape
+            sequences = skeletons.permute(0, 2, 3, 1, 4)
+
+            # Select most active person (M=1)
+            motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
+            main_person_idx = motion.argmax(dim=-1)       # (B,)
+
+            indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
+            sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
+            sequences = sequences.float().to(device)  # (B, T, J, D)
+
             if t1_trainable:
-                x1 = t1.encode(skeletons)        # grads will flow
+                x1 = t1.encode(sequences)  # grads will flow
             else:
                 with torch.no_grad():
-                    x1 = t1.encode(skeletons)    # frozen model, no grads
-        
+                    x1 = t1.encode(sequences)  # frozen model, no grads
+
             x2 = t2.encode(x1)
             fused = cross_attn(x1, x2, x2)
 
@@ -168,14 +180,11 @@ def finetuning(
             correct += (logits.argmax(dim=1) == labels).sum().item()
             total += labels.size(0)
 
-            #cheduler.step(epoch + i / len(train_loader))
 
         train_acc = correct / total
         avg_loss = total_loss / total
         train_losses.append(avg_loss)
-        train_accuracies.append(train_acc) 
-
-
+        train_accuracies.append(train_acc)
 
         # Validation
         t1.eval()
@@ -185,9 +194,22 @@ def finetuning(
         val_total_loss, val_correct, val_total = 0.0, 0, 0
 
         with torch.no_grad():
-            for skeletons, labels in val_loader:
+            for skeletons, labels, _ in val_loader:
                 skeletons, labels = skeletons.to(device), labels.to(device)
-                x1 = t1.encode(skeletons)
+
+                # Preprocessing sequences from CTR-GCN-style input
+                B, C, T, V, M = skeletons.shape
+                sequences = skeletons.permute(0, 2, 3, 1, 4)
+
+                # Select most active person (M=1)
+                motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
+                main_person_idx = motion.argmax(dim=-1)       # (B,)
+
+                indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
+                sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
+                sequences = sequences.float().to(device)  # (B, T, J, D)
+
+                x1 = t1.encode(sequences)  # (B, T, J, D)
                 x2 = t2.encode(x1)
                 fused = cross_attn(x1, x2, x2)
 
@@ -208,7 +230,7 @@ def finetuning(
         val_losses.append(val_avg_loss)
         val_accuracies.append(val_acc)
 
-        scheduler.step() # Step the scheduler after each epoch
+        scheduler.step()
         current_lr = optimizer.param_groups[0]['lr']
         print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
 

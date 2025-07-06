@@ -1,12 +1,12 @@
 import numpy as np
 import torch
 import argparse
-from base_dataset import ActionRecognitionDataset
+from NTU_feeder import Feeder
 from NTU_pretraining import train_T1, BaseT1
 from finetuning import load_T1, finetuning, GaitRecognitionHead
 
 from penn_utils import set_seed
-from NTU_utils import split_train_val, NUM_JOINTS_NTU
+from NTU_utils import NUM_JOINTS_NTU
 
 def load_cached_data(path="ntu_cache_train_sub.npz"):
     data = np.load(path, allow_pickle=True)
@@ -35,8 +35,10 @@ def main():
     hidden_size = args.hidden_size
     device = args.device
     pretrain = args.pretrain
+    WINDOW_SIZE = 64
 
     mask_strategy = "global_joint"
+    num_classes = 60 # NTU has 60 classes
     mask_ratio = 0.3
     val_ratio = 0.05
 
@@ -61,17 +63,54 @@ def main():
     # load the dataset
     import time
     t_start = time.time()
-    all_seq_clean, all_lbl_clean = load_cached_data('CORRECTED_ntu_cache_train_sub_64_10_augmented.npz')
-    train_seq, train_lbl, val_seq, val_lbl = split_train_val(all_seq_clean, all_lbl_clean, val_ratio=0.20)
+    
+    # train_feeder_args:
+    #   data_path: data/ntu/NTU60_CS.npz
+    #   split: train
+    #   debug: False
+    #   random_choose: False
+    #   random_shift: False
+    #   random_move: False
+    #   window_size: 64
+    #   normalization: False
+    #   random_rot: True
+    #   p_interval: [0.5, 1]
+    #   vel: False
+    #   bone: False
+    train_dataset = Feeder(
+        data_path="NTU60_CS.npz",
+        split='train',
+        debug=False,
+        random_choose=False,
+        random_shift=False,
+        random_move=False,
+        window_size=WINDOW_SIZE,
+        normalization=False,
+        random_rot=True,
+        p_interval=[0.5, 1],
+        vel=False,
+        bone=False
+    )
+
+    # test_feeder_args:
+    #   data_path: data/ntu/NTU60_CS.npz
+    #   split: test
+    #   window_size: 64
+    #   p_interval: [0.95]
+    #   vel: False
+    #   bone: False
+    #   debug: False
+    val_dataset = Feeder(
+        data_path="NTU60_CS.npz",
+        split='test',
+        window_size=WINDOW_SIZE,
+        p_interval=[0.95],
+        vel=False,
+        bone=False,
+        debug=False
+    )
     t_end = time.time()
     print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")
-    train_dataset = ActionRecognitionDataset(train_seq, train_lbl)
-    val_dataset = ActionRecognitionDataset(val_seq, val_lbl)
-
-    # get the number of classes
-    num_classes = len(set(train_lbl))
-    print(f"[INFO] Number of classes: {num_classes}")
-    print("=" * 100)
 
     if pretrain: 
         """
@@ -115,7 +154,7 @@ def main():
             device=device
         )
 
-        # save pretrained model
+        # save pretrained model 
         torch.save(model.state_dict(), "action_checkpoints/NTU_NONE/NTU_pretrained.pt")
 
         print("Aha! pretraining is done!")
@@ -141,17 +180,15 @@ def main():
 
     print("pretrained model loaded successfully!")
 
-    train_finetuning_dataset = ActionRecognitionDataset(train_seq, train_lbl)
-    val_finetuning_dataset = ActionRecognitionDataset(val_seq, val_lbl)
 
     train_finetuning_dataloader = torch.utils.data.DataLoader(
-        train_finetuning_dataset,
+        train_dataset,
         batch_size=batch_size,
         shuffle=True,
     )
 
     val_finetuning_dataloader = torch.utils.data.DataLoader(
-        val_finetuning_dataset,
+        val_dataset,
         batch_size=batch_size,
         shuffle=False,
     )

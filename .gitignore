@@ -24,3 +24,6 @@ N_UCLA.txt
 vids/
 wget-log
 *.npz
+raw_data/
+statistics/
+denoised_data/

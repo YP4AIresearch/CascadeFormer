@@ -148,7 +148,7 @@ class BaseT1(nn.Module):
 
         # x = x.reshape(B * T, J, D).permute(0, 2, 1)     # → (B*T, D, J)
         # x = self.joint_conv(x)                          # → (B*T, D, J)
-        #x = x.reshape(B, T, J * D)                      # → (B, T, J*D)
+        x = x.reshape(B, T, J * D)                      # → (B, T, J*D)
         x = self.joint_embedding(x)                     # → (B, T, d_model)
         x = x + self.pos_embedding[:, :T, :]            # → (B, T, d_model)
         return self.transformer_encoder(x)              # → (B, T, d_model)
@@ -213,10 +213,20 @@ def train_T1(masking_strategy, train_dataset, val_dataset, model: BaseT1, num_ep
     for epoch in tqdm(range(num_epochs)):
         model.train()
         train_loss = 0.0
-        for i, (sequences, _) in enumerate(train_loader):
+        for i, (sequences, _, _) in enumerate(train_loader):
+
+            # Preprocessing sequences from CTR-GCN-style input
+            B, C, T, V, M = sequences.shape
+            sequences = sequences.permute(0, 2, 3, 1, 4)
+
+            # Select most active person (M=1)
+            motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
+            main_person_idx = motion.argmax(dim=-1)       # (B,)
+
+            indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
+            sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
             sequences = sequences.float().to(device)  # (B, T, J, D)
             B, T, J, D = sequences.shape
-
             if masking_strategy == "global_joint":
                 masked_inputs, mask = mask_random_global_joints(sequences, mask_ratio=mask_ratio)
                 # Expand to (B, T, J, D)
@@ -235,7 +245,7 @@ def train_T1(masking_strategy, train_dataset, val_dataset, model: BaseT1, num_ep
             loss.backward()
             optimizer.step()
             train_loss += loss.item() * sequences.size(0)
-            scheduler.step(epoch + i / len(train_loader))
+            scheduler.step()
 
         train_loss /= len(train_dataset)
 
@@ -243,10 +253,20 @@ def train_T1(masking_strategy, train_dataset, val_dataset, model: BaseT1, num_ep
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
-            for sequences, _ in val_loader:
-                sequences = sequences.float().to(device)
-                B, T, J, D = sequences.shape
+            for sequences, _, _ in val_loader:
+                # Preprocessing sequences from CTR-GCN-style input
+                B, C, T, V, M = sequences.shape
+                sequences = sequences.permute(0, 2, 3, 1, 4)
 
+                # Select most active person (M=1)
+                motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
+                main_person_idx = motion.argmax(dim=-1)       # (B,)
+
+                indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
+                sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
+                sequences = sequences.float().to(device)  # (B, T, J, D)
+
+                B, T, J, D = sequences.shape
                 masked_inputs, mask = mask_random_global_joints(sequences, mask_ratio=mask_ratio)
                 mask_broadcasted = mask.unsqueeze(-1).expand(B, T, J, D)
 

@@ -12,18 +12,14 @@
 
 ![alt text](docs/tuning_diagram.png)
 
-## Previous bug in data processing for NTU (FIXED!)
-
-Issue: There are variable subject numbers (one or two) in the input of the network
-
-1. My (previous) approach: simply **take the first one and ditch the other**
-2. Official approach: *"We used a **heuristic method**. It's very simple (but not necessarily correct for all the samples). We consider the variance of the X, Y, and Z values of all the joints and add them up. We took the body with the higher value as the main subject."*
-3. Is this gonna make any difference? Yes! **11 out of 60** classes involve two person interacting with each other.
-4. But, current SoTA are using something different (both HyperFormer and SkateFormer) - they tend to keep both people...
-
 ## Which part is the culprit: data OR model?
 
-Method: reproduce HyperFormer using our own pipeline (if we get SoTA, the bottleneck is our model, not data!)
+Reproduce HyperFormer (with their official HPs) using our own pipeline - only got **80.83%**?!
+
+## Meeting notes with Luming
+
+1. major issue: no effective spatial encoding
+2. minor issue: pretraining without **EXTERNAL** datasets won't be too helpful
 
 ## Leaderboard
 
