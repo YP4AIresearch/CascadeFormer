@@ -126,8 +126,13 @@ def finetuning(
          list(gait_head.parameters())
 
     optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
-    
+    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer,
+        T_0=10,     # number of epochs for the first cycle
+        T_mult=2,   # cycle length doubles after each restart
+        eta_min=1e-7  # min LR
+    )
 
     criterion = nn.CrossEntropyLoss()
 
@@ -164,11 +169,18 @@ def finetuning(
                 with torch.no_grad():
                     x1 = t1.encode(sequences)  # frozen model, no grads
 
+            # add a CLS token
+            B = x1.size(0)
+            cls_token = torch.zeros(B, 1, d_model).to(x1.device)
+            x1 = torch.cat([cls_token, x1], dim=1)  # prepend CLS
+
             x2 = t2.encode(x1)
             fused = cross_attn(x1, x2, x2)
 
             # we need to do pooling
-            pooled = fused.mean(dim=1)
+            #pooled = fused.mean(dim=1)
+            # CLS token pooling
+            pooled = fused[:, 0]  # take the [CLS] token
             logits = gait_head(pooled)
 
             loss = criterion(logits, labels)
@@ -210,11 +222,19 @@ def finetuning(
                 sequences = sequences.float().to(device)  # (B, T, J, D)
 
                 x1 = t1.encode(sequences)  # (B, T, J, D)
+
+                # add a CLS token
+                B = x1.size(0)
+                cls_token = torch.zeros(B, 1, d_model).to(x1.device)
+                x1 = torch.cat([cls_token, x1], dim=1)  # prepend CLS
+
                 x2 = t2.encode(x1)
                 fused = cross_attn(x1, x2, x2)
 
                 # we need to do pooling
-                pooled = fused.mean(dim=1)
+                #pooled = fused.mean(dim=1)
+                # CLS token pooling
+                pooled = fused[:, 0]  # take the [CLS] token
                 logits = gait_head(pooled)
 
 
@@ -230,7 +250,9 @@ def finetuning(
         val_losses.append(val_avg_loss)
         val_accuracies.append(val_acc)
 
-        scheduler.step()
+        #scheduler.step()
+        scheduler.step(epoch + i / len(train_loader))  # allows smooth within-epoch updates
+
         current_lr = optimizer.param_groups[0]['lr']
         print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
 

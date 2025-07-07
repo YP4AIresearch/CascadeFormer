@@ -43,6 +43,12 @@ CUDA_VISIBLE_DEVICES=0 taskset 0,1,2,3,4 python3 src/main.py --class_specific_sp
 CUDA_VISIBLE_DEVICES=0 taskset 0,1,2,3,4 python3 src/main.py --class_specific_split --root_dir 2D_Poses_2/
 ```
 
+## monitor the processses
+
+```bash
+ps aux | grep python
+```
+
 
 ## unzip datasets
 

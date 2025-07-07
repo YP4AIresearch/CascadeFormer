@@ -18,8 +18,8 @@ Reproduce HyperFormer (with their official HPs) using our own pipeline - only go
 
 ## Meeting notes with Luming
 
-1. major issue: no effective spatial encoding
-2. minor issue: pretraining without **EXTERNAL** datasets won't be too helpful
+1. major issue: *"no effective spatial encoding"*
+2. minor issue: *pretraining without **EXTERNAL** datasets won't be significantly helpful*
 
 ## Leaderboard
 
@@ -28,6 +28,7 @@ Reproduce HyperFormer (with their official HPs) using our own pipeline - only go
 | Penn Action | 2,326 | 13, 2D | 93.4% (HDM-BG) | **94.66%** [checkpoint](https://drive.google.com/drive/folders/1Za50ZE9ZEKdEps_ZE-JIbatTpLuMW83k) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1Jl7lIVcbqw6W2xzvf09nVRERXHIFrjXn); **94.01%** [checkpoint](https://drive.google.com/drive/folders/1jAlH7pf-zaHy7CVIF3MAmiZ5mMtDw2j-) | N/A | N/A | 
 | N-UCLA | 1,494 | 20, 3D | 98.3% (SkateFormer) | **88.79%** | **91.16%** [checkpoint](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [checkpoint](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) | **90.73%** [checkpoint](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) | N/A | N/A |
 | NTU/CS | 56,880 | 25, 3D | 92.6% (SkateFormer) | **75.22%** | **74.10%** | **73.56%** | **68.98%** | **73.36%** | 
+| NTU/CS, new data pipeline | 56,880 | 25, 3D | 92.6% (SkateFormer) | **76.36%** [checkpoint](https://drive.google.com/drive/folders/1I-WfaXfITZqCwjJyi2ei9E1NumfPFIlI) | **TBD** | **TBD** | **TBD** | **TBD** |
 | NTU/CV | 56,880 | 25, 3D | 97.0% (SkateFormer) | N/A | N/A | N/A | N/A | N/A |
 
 ## Ablation Study: bone representation (Penn Action and NTU/CS)

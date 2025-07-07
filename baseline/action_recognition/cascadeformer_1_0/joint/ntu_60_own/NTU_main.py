@@ -36,6 +36,7 @@ def main():
     device = args.device
     pretrain = args.pretrain
     WINDOW_SIZE = 64
+    HEAD_DROPOUT = 0.5
 
     mask_strategy = "global_joint"
     num_classes = 60 # NTU has 60 classes
@@ -193,7 +194,11 @@ def main():
         shuffle=False,
     )
 
-    gait_head_template = GaitRecognitionHead(input_dim=hidden_size, num_classes=num_classes).to(device)
+    gait_head_template = GaitRecognitionHead(
+        input_dim=hidden_size, 
+        num_classes=num_classes,
+        dropout=HEAD_DROPOUT
+        ).to(device)
 
     freezeT1 = False
     unfreeze_layers = None # freeze all layers

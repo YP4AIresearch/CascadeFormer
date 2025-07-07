@@ -1,8 +1,8 @@
 import torch
 import argparse
-from base_dataset import ActionRecognitionDataset
 from HyperFormer import Model as HyperFormer
-from NTU_utils import split_train_val, NUM_JOINTS_NTU
+from NTU_feeder import Feeder
+from NTU_utils import NUM_JOINTS_NTU
 from penn_utils import set_seed
 import torch.optim as optim
 import torch.nn.functional as F
@@ -22,38 +22,52 @@ def parse_args():
     parser.add_argument("--device", type=str, default='cuda', help="Device to use for training (cuda or cpu)")
     return parser.parse_args()
 
-
 def main():
     set_seed(42)
+    num_epochs = 140
     batch_size = 64 
     num_classes = 60  # NTU has 60 classes
+    WINDOW_SIZE = 64
     # Set the device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     JOINT_LABELS = [0, 4, 2, 2, 2, 2, 1, 1, 2, 2, 1, 1, 2, 3, 3, 3, 2, 3, 3, 3, 1, 0, 1, 0, 1]
-    # FIXME: I am using single person action recognition FOR NOW
-    NUM_PERSONS = 1
-
     args = parse_args()
     TRAIN = args.train
 
+    # load the dataset
+    import time
+    t_start = time.time()
+    
+    train_dataset = Feeder(
+        data_path="NTU60_CS.npz",
+        split='train',
+        debug=False,
+        random_choose=False,
+        random_shift=False,
+        random_move=False,
+        window_size=WINDOW_SIZE,
+        normalization=False,
+        random_rot=True,
+        p_interval=[0.5, 1],
+        vel=False,
+        bone=False
+    )
+
+    val_dataset = Feeder(
+        data_path="NTU60_CS.npz",
+        split='test',
+        window_size=WINDOW_SIZE,
+        p_interval=[0.95],
+        vel=False,
+        bone=False,
+        debug=False
+    )
+    t_end = time.time()
+    print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")
+
     if TRAIN:
-        print("=" * 50)
-        print(f"[INFO] Starting NTU dataset processing on {device}...")
-        print("=" * 50)
-
-        # load the dataset
-        import time
-        t_start = time.time()
-        all_seq_clean, all_lbl_clean = load_cached_data('CORRECTED_ntu_cache_train_sub_64_10_augmented.pt')
-        train_seq, train_lbl, val_seq, val_lbl = split_train_val(all_seq_clean, all_lbl_clean, val_ratio=0.20)
-        t_end = time.time()
-        print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")        
-
-        train_finetuning_dataset = ActionRecognitionDataset(train_seq, train_lbl)
-        val_finetuning_dataset = ActionRecognitionDataset(val_seq, val_lbl)
-
         train_loader = torch.utils.data.DataLoader(
-            train_finetuning_dataset,
+            train_dataset,
             batch_size=batch_size,
             shuffle=True,
             num_workers=4,
@@ -62,7 +76,7 @@ def main():
         )
 
         val_loader = torch.utils.data.DataLoader(
-            val_finetuning_dataset,
+            val_dataset,
             batch_size=batch_size,
             shuffle=False,
         )
@@ -70,7 +84,7 @@ def main():
         model = HyperFormer(
             num_class=num_classes,
             num_point=NUM_JOINTS_NTU,
-            num_person=NUM_PERSONS,
+            num_person=1,
             graph='graph.ntu_rgb_d.Graph',
             graph_args={'labeling_mode': 'spatial'},
             joint_label=JOINT_LABELS,
@@ -92,15 +106,26 @@ def main():
             milestones=[110, 120],
             gamma=0.1
         )
-        num_epochs = 140
         for epoch in trange(num_epochs, desc="Training Progress"):
             model.train()
             total_loss, correct, total = 0, 0, 0
 
-            for x, y in tqdm(train_loader, desc=f"Train [{epoch+1}]"):
-                x, y = x.to(device), y.to(device)
+            for skeletons, y, _ in tqdm(train_loader, desc=f"Train [{epoch+1}]"):
+                skeletons, y = skeletons.to(device), y.to(device)
+
+                # Preprocessing sequences from CTR-GCN-style input
+                B, C, T, V, M = skeletons.shape
+                sequences = skeletons.permute(0, 2, 3, 1, 4)
+
+                # Select most active person (M=1)
+                motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
+                main_person_idx = motion.argmax(dim=-1)       # (B,)
+
+                indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
+                sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
+                sequences = sequences.float().to(device)  # (B, T, J, D)
                 # make sure the input shape matches the model's expectation
-                x = x.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
+                x = sequences.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
 
                 logits, _ = model(x, y)
                 loss = F.cross_entropy(logits, y)
@@ -121,12 +146,22 @@ def main():
             model.eval()
             val_loss, correct, total = 0, 0, 0
             with torch.no_grad():
-                for x, y in tqdm(val_loader, desc=f"Val [{epoch+1}]"):
+                for skeletons, y ,_ in tqdm(val_loader, desc=f"Val [{epoch+1}]"):
                     # x: (B, T, J, D)
-                    x, y = x.to(device), y.to(device)
+                    skeletons, y = skeletons.to(device), y.to(device)
+                    # Preprocessing sequences from CTR-GCN-style input
+                    B, C, T, V, M = skeletons.shape
+                    sequences = skeletons.permute(0, 2, 3, 1, 4)
 
+                    # Select most active person (M=1)
+                    motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
+                    main_person_idx = motion.argmax(dim=-1)       # (B,)
+
+                    indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
+                    sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
+                    sequences = sequences.float().to(device)  # (B, T, J, D)
                     # make sure the input shape matches the model's expectation
-                    x = x.permute(0, 3, 1, 2).unsqueeze(-1)
+                    x = sequences.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
 
                     logits, _ = model(x, y)
                     loss = F.cross_entropy(logits, y)
@@ -152,10 +187,8 @@ def main():
     print("=" * 50)
     print(f"[INFO] Starting NTU dataset testing on {device}...")
     print("=" * 50)
-    test_seq, test_lbl = load_cached_data('CORRECTED_ntu_cache_test_sub_64_10.pt')
-    test_dataset = ActionRecognitionDataset(test_seq, test_lbl)
     test_loader = torch.utils.data.DataLoader(
-        test_dataset,
+        val_dataset,
         batch_size=batch_size,
         shuffle=False,
     )
@@ -164,7 +197,7 @@ def main():
     model = HyperFormer(
         num_class=num_classes,
         num_point=NUM_JOINTS_NTU,
-        num_person=NUM_PERSONS,
+        num_person=1,
         graph='graph.ntu_rgb_d.Graph',
         graph_args={'labeling_mode': 'spatial'},
         joint_label=JOINT_LABELS,
