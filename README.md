@@ -8,9 +8,11 @@
 
 ![alt text](docs/OmniVec2.png)
 
-**Tokenization** matters! OmniVec2 uses TimeSformer, where each patch attends the same patch across all frames and other patches within the same frame
+**Tokenization** matters! OmniVec2 uses TimeSformer, where each patch attends the same patch across all frames and other patches within the same frame:
 
 ![alt text](docs/TimeSformer.png)
+
+Conclusion🥹: we perhaps need to do 'smart' joint embedding like this instead of frame embedding 
 
 ## biomechanics-aware frame embedding 
 

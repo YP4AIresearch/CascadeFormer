@@ -195,7 +195,7 @@ def finetuning(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, 
         T_max=num_epochs,
-        eta_min=3e-6
+        eta_min=3e-6 # FIXME: tune the lower bound for the learning rate! 
     )
 
     #criterion = nn.CrossEntropyLoss()
