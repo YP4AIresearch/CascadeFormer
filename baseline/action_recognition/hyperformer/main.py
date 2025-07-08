@@ -2,7 +2,6 @@ import torch
 import argparse
 from HyperFormer import Model as HyperFormer
 from NTU_feeder import Feeder
-from NTU_utils import NUM_JOINTS_NTU
 from penn_utils import set_seed
 import torch.optim as optim
 import torch.nn.functional as F
@@ -24,9 +23,18 @@ def parse_args():
 
 def main():
     set_seed(42)
-    num_epochs = 140
-    batch_size = 64 
-    num_classes = 60  # NTU has 60 classes
+    NUM_EPOCHS = 140  # HyperFormer uses 140 epochs
+    BATCH_SIZE = 64  # HyperFormer uses 64 batch size for both train and val
+    NUM_CLASSES = 60  # NTU has 60 classes
+    NUM_JOINTS_NTU = 25  # NTU skeleton has 25 joints
+
+    NUM_PERSON = 2  # FIXME: ablation study here! 
+
+
+    # FIXME: haven't added learning rate warmup, BUT -
+    # "You don’t need warmup if you’re already reaching >81% and training is stable"
+    #WARMUP_EPOCHS = 5
+
     WINDOW_SIZE = 64
     # Set the device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -51,7 +59,7 @@ def main():
         p_interval=[0.5, 1],
         vel=False,
         bone=False
-    )
+    ) # matches official HyperFormer configs
 
     val_dataset = Feeder(
         data_path="NTU60_CS.npz",
@@ -61,14 +69,14 @@ def main():
         vel=False,
         bone=False,
         debug=False
-    )
+    ) # matches official HyperFormer configs
     t_end = time.time()
     print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")
 
     if TRAIN:
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
-            batch_size=batch_size,
+            batch_size=BATCH_SIZE,
             shuffle=True,
             num_workers=4,
             pin_memory=True,
@@ -77,36 +85,37 @@ def main():
 
         val_loader = torch.utils.data.DataLoader(
             val_dataset,
-            batch_size=batch_size,
+            batch_size=BATCH_SIZE,
             shuffle=False,
         )
 
         model = HyperFormer(
-            num_class=num_classes,
+            num_class=NUM_CLASSES,
             num_point=NUM_JOINTS_NTU,
-            num_person=1,
-            graph='graph.ntu_rgb_d.Graph',
-            graph_args={'labeling_mode': 'spatial'},
+            num_person=NUM_PERSON,
+            graph='graph.ntu_rgb_d.Graph', # match!
+            graph_args={'labeling_mode': 'spatial'}, # match!
             joint_label=JOINT_LABELS,
-            in_channels=3,
-            drop_out=0.5,
-            num_of_heads=9
+            in_channels=3, # match the default!
+            drop_out=0.5, # FIXME: original is actually 0!
+            num_of_heads=9 # match the default!
         ).to(device)
 
         optimizer = optim.SGD(
             model.parameters(),
-            lr=0.025,
-            momentum=0.9,
-            nesterov=True,
-            weight_decay=0.0004
+            lr=0.025, # match!
+            momentum=0.9, # match the default!
+            nesterov=True, # match!
+            weight_decay=0.0004 # match!
         )
 
         lr_scheduler = optim.lr_scheduler.MultiStepLR(
             optimizer,
-            milestones=[110, 120],
-            gamma=0.1
+            milestones=[110, 120], # match!
+            gamma=0.1 # match!
         )
-        for epoch in trange(num_epochs, desc="Training Progress"):
+
+        for epoch in trange(NUM_EPOCHS, desc="Training Progress"):
             model.train()
             total_loss, correct, total = 0, 0, 0
 
@@ -123,9 +132,13 @@ def main():
 
                 indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
                 sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
-                sequences = sequences.float().to(device)  # (B, T, J, D)
-                # make sure the input shape matches the model's expectation
+
+                # TWO PERSONS
+                # sequences = skeletons.permute(0, 3, 1, 2, 4)  # (B, D=3, T, J=25, M=2)
+                # sequences = sequences.float().to(device)  # (B, T, J, D)
+                # single person: make sure the input shape matches the model's expectation
                 x = sequences.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
+                #x = sequences
 
                 logits, _ = model(x, y)
                 loss = F.cross_entropy(logits, y)
@@ -140,7 +153,7 @@ def main():
                 total += y.size(0)
 
             train_acc = correct / total
-            print(f"[Epoch {epoch+1}] Train Loss: {total_loss / total:.4f} | Acc: {train_acc:.4f}")
+            tqdm.write(f"[Epoch {epoch+1}] Train Loss: {total_loss / total:.4f} | Acc: {train_acc:.4f}")
 
             # validation
             model.eval()
@@ -159,9 +172,14 @@ def main():
 
                     indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
                     sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
-                    sequences = sequences.float().to(device)  # (B, T, J, D)
-                    # make sure the input shape matches the model's expectation
+                   
+                    # TWO PERSONS
+                    # sequences = skeletons.permute(0, 3, 1, 2, 4)  # (B, D=3, T, J=25, M=2)
+                    # sequences = sequences.float().to(device)  # (B, T, J, D)
+                    
+                    # single person: make sure the input shape matches the model's expectation
                     x = sequences.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
+                    #x = sequences
 
                     logits, _ = model(x, y)
                     loss = F.cross_entropy(logits, y)
@@ -177,7 +195,7 @@ def main():
 
         print("Training completed successfully!")
         # Save the model
-        torch.save(model.state_dict(), "action_checkpoints/NTU_hyperformer.pt")
+        torch.save(model.state_dict(), "action_checkpoints/HYPER_DOUBLE/NTU_hyperformer.pt")
         print("Model saved successfully!")
 
     else:
@@ -189,15 +207,15 @@ def main():
     print("=" * 50)
     test_loader = torch.utils.data.DataLoader(
         val_dataset,
-        batch_size=batch_size,
+        batch_size=BATCH_SIZE,
         shuffle=False,
     )
 
     # Load the model
     model = HyperFormer(
-        num_class=num_classes,
+        num_class=NUM_CLASSES,
         num_point=NUM_JOINTS_NTU,
-        num_person=1,
+        num_person=NUM_PERSON,
         graph='graph.ntu_rgb_d.Graph',
         graph_args={'labeling_mode': 'spatial'},
         joint_label=JOINT_LABELS,
@@ -205,7 +223,7 @@ def main():
         drop_out=0.5,
         num_of_heads=9
     ).to(device)
-    model.load_state_dict(torch.load("action_checkpoints/NTU_hyperformer.pt"))
+    model.load_state_dict(torch.load("action_checkpoints/HYPER_DOUBLE/NTU_hyperformer.pt"))
     print("[INFO] Model loaded successfully!")
 
     model.eval()
@@ -213,7 +231,11 @@ def main():
     with torch.no_grad():
         for x, y in tqdm(test_loader, desc="Test"):
             x, y = x.to(device), y.to(device)
-            x = x.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
+            # x = x.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
+            
+            # TWO PERSONS?!
+            x = x.permute(0, 3, 1, 2, 4)  # (B, D=3, T, J=25, M=2)
+            x = x.float().to(device)
 
             logits, _ = model(x, y)
             loss = F.cross_entropy(logits, y)

@@ -644,8 +644,6 @@ def get_uniform_graph(num_node, self_link, neighbor):
     A = normalize_digraph(edge2mat(neighbor + self_link, num_node))
     return A
 
-
-
 class Graph:
     def __init__(self, labeling_mode='spatial', scale=1):
         num_node = 25

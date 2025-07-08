@@ -23,13 +23,12 @@ def load_T1(model_path: str, num_joints: int = 13, three_d: bool = False, d_mode
     # move model to device and return the model
     return model.to(device)
 
-
-class CrossAttention(nn.Module):
+class SimpleCrossAttention(nn.Module):
     """
     Simple cross-attention block that applies multi-head attention between two feature sequences.
     """
     def __init__(self, d_model=128, nhead=4, dropout=0.1):
-        super(CrossAttention, self).__init__()
+        super(SimpleCrossAttention, self).__init__()
         # cross-attention layer
         self.cross_attention = nn.MultiheadAttention(embed_dim=d_model, num_heads=nhead, batch_first=True)
         
@@ -48,12 +47,45 @@ class CrossAttention(nn.Module):
         
         return out
 
+class CrossAttentionWithFFN(nn.Module):
+    def __init__(self, d_model=128, nhead=4, dropout=0.2):
+        super(CrossAttentionWithFFN, self).__init__()
+        self.cross_attention = nn.MultiheadAttention(
+            embed_dim=d_model,
+            num_heads=nhead,
+            dropout=dropout,  # dropout inside attention weights
+            batch_first=True
+        )
+        
+        self.norm1 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(dropout)
+
+        # FFN block (standard in Transformer)
+        self.ffn = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(d_model, d_model)
+        )
+        self.norm2 = nn.LayerNorm(d_model)
+        self.dropout2 = nn.Dropout(dropout)
+
+    def forward(self, Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor) -> torch.Tensor:
+        # Cross-attention
+        attn_out, _ = self.cross_attention(Q, K, V)
+        x = self.norm1(Q + self.dropout1(attn_out))  # residual + norm
+
+        # Feedforward + residual
+        ffn_out = self.ffn(x)
+        out = self.norm2(x + self.dropout2(ffn_out))  # residual + norm
+        return out
+
 
 class BaseT2(nn.Module):
-    def __init__(self, d_model=128, nhead=4, num_layers=2):
+    def __init__(self, d_model=128, nhead=4, num_layers=2, dropout=0.1):
         super(BaseT2, self).__init__()
         self.encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=0.1, batch_first=True),
+            nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout, batch_first=True),
             num_layers=num_layers
         )
     
@@ -65,8 +97,19 @@ class BaseT2(nn.Module):
         encoded = self.encoder(x)
         return encoded
 
+class SimpleGaitRecognitionHead(nn.Module):
+    """
+        A simple linear head for gait recognition.
+        The model consists of a linear layer that maps the output of the transformer to the number of classes.
+    """
+    def __init__(self, input_dim, num_classes, dropout=0.5):
+        super().__init__()
+        self.fc = nn.Linear(input_dim, num_classes)
 
-class GaitRecognitionHead(nn.Module):
+    def forward(self, x):
+        return self.fc(x)
+
+class GaitRecognitionHeadWithDropout(nn.Module):
     """
         A simple linear head for gait recognition.
         The model consists of a linear layer that maps the output of the transformer to the number of classes.
@@ -77,7 +120,24 @@ class GaitRecognitionHead(nn.Module):
         self.fc = nn.Linear(input_dim, num_classes)
 
     def forward(self, x):
+        x = self.dropout(x)  # apply dropout
         return self.fc(x)
+
+class GaitRecognitionHeadMLP(nn.Module):
+    def __init__(self, input_dim, num_classes, dropout=0.5):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.LayerNorm(input_dim),
+            nn.Dropout(dropout),
+            nn.Linear(input_dim, input_dim),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(input_dim, num_classes)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
 
 def finetuning(
     train_loader: DataLoader,
@@ -91,6 +151,8 @@ def finetuning(
     lr: float = 1e-5,
     wd: float = 1e-2,
     freezeT1: bool = True,
+    t2_dropout: float = 0.1,
+    cross_attn_dropout: float = 0.1,
     unfreeze_layers: List[int] = None,
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
 ) -> Tuple[BaseT1, nn.Module, nn.Module]:
@@ -98,7 +160,6 @@ def finetuning(
     print(f"is T1 freezed? {freezeT1}")
     print(f"unfreezing layers: {unfreeze_layers}")
 
-    
     # freeze T1 parameters
     if freezeT1:
         for param in t1.parameters():
@@ -116,8 +177,13 @@ def finetuning(
     gait_head.to(device)
 
     # intialize T2 transformer and cross-attention
-    t2 = BaseT2(d_model, nhead, num_layers).to(device)
-    cross_attn = CrossAttention(d_model, nhead).to(device)
+    t2 = BaseT2(d_model, nhead, num_layers, dropout=t2_dropout).to(device)
+    #cross_attn = SimpleCrossAttention(d_model, nhead).to(device)
+    cross_attn = CrossAttentionWithFFN(
+        d_model=d_model,
+        nhead=nhead,
+        dropout=cross_attn_dropout
+    ).to(device)
 
     # optimizer and loss
     params = list(filter(lambda p: p.requires_grad, t1.parameters())) + \
@@ -126,15 +192,11 @@ def finetuning(
          list(gait_head.parameters())
 
     optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
-    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer,
-        T_0=10,     # number of epochs for the first cycle
-        T_mult=2,   # cycle length doubles after each restart
-        eta_min=1e-7  # min LR
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
 
-    criterion = nn.CrossEntropyLoss()
+    #criterion = nn.CrossEntropyLoss()
+    # add label smoothing
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
 
     train_losses, val_losses = [], []
     train_accuracies, val_accuracies = [], []
@@ -169,18 +231,12 @@ def finetuning(
                 with torch.no_grad():
                     x1 = t1.encode(sequences)  # frozen model, no grads
 
-            # add a CLS token
-            B = x1.size(0)
-            cls_token = torch.zeros(B, 1, d_model).to(x1.device)
-            x1 = torch.cat([cls_token, x1], dim=1)  # prepend CLS
-
             x2 = t2.encode(x1)
             fused = cross_attn(x1, x2, x2)
 
             # we need to do pooling
-            #pooled = fused.mean(dim=1)
-            # CLS token pooling
-            pooled = fused[:, 0]  # take the [CLS] token
+            # other than mean pooling, we can do Adaptive Pooling 
+            pooled = fused.mean(dim=1)
             logits = gait_head(pooled)
 
             loss = criterion(logits, labels)
@@ -223,18 +279,18 @@ def finetuning(
 
                 x1 = t1.encode(sequences)  # (B, T, J, D)
 
-                # add a CLS token
-                B = x1.size(0)
-                cls_token = torch.zeros(B, 1, d_model).to(x1.device)
-                x1 = torch.cat([cls_token, x1], dim=1)  # prepend CLS
+                # # add a CLS token
+                # B = x1.size(0)
+                # cls_token = torch.zeros(B, 1, d_model).to(x1.device)
+                # x1 = torch.cat([cls_token, x1], dim=1)  # prepend CLS
 
                 x2 = t2.encode(x1)
                 fused = cross_attn(x1, x2, x2)
 
                 # we need to do pooling
-                #pooled = fused.mean(dim=1)
+                pooled = fused.mean(dim=1)
                 # CLS token pooling
-                pooled = fused[:, 0]  # take the [CLS] token
+                #pooled = fused[:, 0]  # take the [CLS] token
                 logits = gait_head(pooled)
 
 
@@ -249,9 +305,7 @@ def finetuning(
 
         val_losses.append(val_avg_loss)
         val_accuracies.append(val_acc)
-
-        #scheduler.step()
-        scheduler.step(epoch + i / len(train_loader))  # allows smooth within-epoch updates
+        scheduler.step()
 
         current_lr = optimizer.param_groups[0]['lr']
         print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
@@ -274,13 +328,26 @@ def load_T2(model_path: str,d_model: int = 128, nhead: int = 4, num_layers: int 
     # move model to device and return the model
     return model.to(device)
 
-def load_cross_attn(path: str,
+def load_simple_cross_attn(path: str,
                     d_model: int = 128,
                     nhead: int = 4,
-                    device: str = "cuda") -> CrossAttention:
+                    cross_attn_dropout: float = 0.1,
+                    device: str = "cuda") -> SimpleCrossAttention:
     """
         loads a CrossAttention model from a checkpoint
     """
-    layer = CrossAttention(d_model=d_model, nhead=nhead)
+    layer = SimpleCrossAttention(d_model=d_model, nhead=nhead, dropout=cross_attn_dropout)
+    layer.load_state_dict(torch.load(path, map_location="cpu"))
+    return layer.to(device)
+
+def load_cross_attn_with_ffn(path: str,
+                    d_model: int = 128,
+                    nhead: int = 4,
+                    dropout: float = 0.1,
+                    device: str = "cuda") -> CrossAttentionWithFFN:
+    """
+        loads a CrossAttentionWithFFN model from a checkpoint
+    """
+    layer = CrossAttentionWithFFN(d_model=d_model, nhead=nhead, dropout=dropout)
     layer.load_state_dict(torch.load(path, map_location="cpu"))
     return layer.to(device)

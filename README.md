@@ -4,17 +4,23 @@
 
 ![alt text](docs/CascadeFormer_1.png)
 
+## Architecture inspiration from OmniVec2 (CVPR'24)
+
+![alt text](docs/OmniVec2.png)
+
+**Tokenization** matters! OmniVec2 uses TimeSformer, where each patch attends the same patch across all frames and other patches within the same frame
+
+![alt text](docs/TimeSformer.png)
+
 ## biomechanics-aware frame embedding 
 
 ![alt text](docs/bioaware.jpg)
 
-## Tuning Diagram
+## Reproduce HyperFormer to guide the revision/improvement of data pipeline and training hyperparameters
 
-![alt text](docs/tuning_diagram.png)
+1. using our own pipeline - only got **80.83%**?!
 
-## Which part is the culprit: data OR model?
-
-Reproduce HyperFormer (with their official HPs) using our own pipeline - only got **80.83%**?!
+2. one person or two person? 
 
 ## Meeting notes with Luming
 
@@ -30,6 +36,10 @@ Reproduce HyperFormer (with their official HPs) using our own pipeline - only go
 | NTU/CS | 56,880 | 25, 3D | 92.6% (SkateFormer) | **75.22%** | **74.10%** | **73.56%** | **68.98%** | **73.36%** | 
 | NTU/CS, new data pipeline | 56,880 | 25, 3D | 92.6% (SkateFormer) | **76.36%** [checkpoint](https://drive.google.com/drive/folders/1I-WfaXfITZqCwjJyi2ei9E1NumfPFIlI) | **TBD** | **TBD** | **TBD** | **TBD** |
 | NTU/CV | 56,880 | 25, 3D | 97.0% (SkateFormer) | N/A | N/A | N/A | N/A | N/A |
+
+## Tuning Diagram
+
+![alt text](docs/tuning_diagram.png)
 
 ## Ablation Study: bone representation (Penn Action and NTU/CS)
 

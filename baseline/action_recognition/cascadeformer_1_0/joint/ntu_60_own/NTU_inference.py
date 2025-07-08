@@ -9,7 +9,7 @@ from NTU_feeder import Feeder
 from penn_utils import set_seed
 from NTU_utils import NUM_JOINTS_NTU
 from NTU_pretraining import BaseT1
-from finetuning import load_T1, load_T2, load_cross_attn, GaitRecognitionHead, BaseT2
+from finetuning import load_T1, load_T2, BaseT2, load_cross_attn_with_ffn, GaitRecognitionHeadMLP
 
 def load_cached_data(path="ntu_cache_train_sub.npz"):
     data = np.load(path, allow_pickle=True)
@@ -103,6 +103,9 @@ def main():
     device = args.device
     WINDOW_SIZE = 64
     num_classes = 60  # NTU has 60 classes
+    T2_DROPOUT = 0.2
+    CROSS_ATTN_DROPOUT = 0.2
+    HEAD_DROPOUT = 0.5 # 0.6, 0.7
 
     # Set the device
 
@@ -137,12 +140,13 @@ def main():
         t1 = load_T1("action_checkpoints/NTU_NONE/NTU_finetuned_T1.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
         print(f"************Unfreezing layers: {unfreeze_layers}")
     
-    t2 = load_T2("action_checkpoints/NTU_NONE/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, device=device)
+    # load T2 model
+    t2 = load_T2("action_checkpoints/NTU_NONE/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, t2_dropout=T2_DROPOUT, device=device)
     # load the cross attention module
-    cross_attn = load_cross_attn("action_checkpoints/NTU_NONE/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device)
+    cross_attn = load_cross_attn_with_ffn("action_checkpoints/NTU_NONE/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device, nhead=n_heads, dropout=CROSS_ATTN_DROPOUT)
 
     # load the gait recognition head
-    gait_head = GaitRecognitionHead(input_dim=hidden_size, num_classes=num_classes)
+    gait_head = GaitRecognitionHeadMLP(input_dim=hidden_size, num_classes=num_classes, dropout=HEAD_DROPOUT)
     gait_head.load_state_dict(torch.load("action_checkpoints/NTU_NONE/NTU_finetuned_head.pt", map_location="cpu"))
     gait_head = gait_head.to(device)
 

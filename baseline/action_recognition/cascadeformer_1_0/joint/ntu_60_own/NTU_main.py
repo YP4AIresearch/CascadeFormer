@@ -3,7 +3,7 @@ import torch
 import argparse
 from NTU_feeder import Feeder
 from NTU_pretraining import train_T1, BaseT1
-from finetuning import load_T1, finetuning, GaitRecognitionHead
+from finetuning import load_T1, finetuning, GaitRecognitionHeadMLP
 
 from penn_utils import set_seed
 from NTU_utils import NUM_JOINTS_NTU
@@ -36,7 +36,9 @@ def main():
     device = args.device
     pretrain = args.pretrain
     WINDOW_SIZE = 64
-    HEAD_DROPOUT = 0.5
+    T2_DROPOUT = 0.2
+    CROSS_ATTN_DROPOUT = 0.2
+    HEAD_DROPOUT = 0.5 # 0.6, 0.7
 
     mask_strategy = "global_joint"
     num_classes = 60 # NTU has 60 classes
@@ -194,7 +196,7 @@ def main():
         shuffle=False,
     )
 
-    gait_head_template = GaitRecognitionHead(
+    gait_head_template = GaitRecognitionHeadMLP(
         input_dim=hidden_size, 
         num_classes=num_classes,
         dropout=HEAD_DROPOUT
@@ -225,6 +227,8 @@ def main():
         lr=ft_lr,
         wd=wd,
         freezeT1=freezeT1,
+        t2_dropout=T2_DROPOUT,
+        cross_attn_dropout=CROSS_ATTN_DROPOUT,
         unfreeze_layers=unfreeze_layers,
         device=device
     )

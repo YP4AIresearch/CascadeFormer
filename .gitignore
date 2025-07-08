@@ -19,6 +19,7 @@ N-UCLA_processed/
 VIBE_results_temp/
 *.zip
 *.pt
+*.txt
 nohup.out
 N_UCLA.txt
 vids/
