@@ -28,7 +28,7 @@ def main():
     NUM_CLASSES = 60  # NTU has 60 classes
     NUM_JOINTS_NTU = 25  # NTU skeleton has 25 joints
 
-    NUM_PERSON = 2  # FIXME: ablation study here! 
+    NUM_PERSON = 1  # FIXME: ablation study here! 
 
 
     # FIXME: haven't added learning rate warmup, BUT -
@@ -97,7 +97,7 @@ def main():
             graph_args={'labeling_mode': 'spatial'}, # match!
             joint_label=JOINT_LABELS,
             in_channels=3, # match the default!
-            drop_out=0.5, # FIXME: original is actually 0!
+            drop_out=0.0, # original is actually 0
             num_of_heads=9 # match the default!
         ).to(device)
 
@@ -229,17 +229,29 @@ def main():
     model.eval()
     test_loss, correct, total = 0, 0, 0
     with torch.no_grad():
-        for x, y in tqdm(test_loader, desc="Test"):
-            x, y = x.to(device), y.to(device)
-            # x = x.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
+        for skeletons, y ,_ in tqdm(test_loader, desc="Test"):
+            # x: (B, T, J, D)
+            skeletons, y = skeletons.to(device), y.to(device)
+            # Preprocessing sequences from CTR-GCN-style input
+            B, C, T, V, M = skeletons.shape
+            sequences = skeletons.permute(0, 2, 3, 1, 4)
+
+            # Select most active person (M=1)
+            motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
+            main_person_idx = motion.argmax(dim=-1)       # (B,)
+
+            indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
+            sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
             
-            # TWO PERSONS?!
-            x = x.permute(0, 3, 1, 2, 4)  # (B, D=3, T, J=25, M=2)
-            x = x.float().to(device)
+            # TWO PERSONS
+            # sequences = skeletons.permute(0, 3, 1, 2, 4)  # (B, D=3, T, J=25, M=2)
+            # sequences = sequences.float().to(device)  # (B, T, J, D)
+            
+            # single person: make sure the input shape matches the model's expectation
+            x = sequences.permute(0, 3, 1, 2).unsqueeze(-1)  # (B, D, T, J, M=1)
+            #x = sequences
 
             logits, _ = model(x, y)
-            loss = F.cross_entropy(logits, y)
-            test_loss += loss.item() * y.size(0)
             pred = logits.argmax(dim=1)
             correct += (pred == y).sum().item()
             total += y.size(0)

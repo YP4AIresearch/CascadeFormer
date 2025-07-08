@@ -16,11 +16,13 @@
 
 ![alt text](docs/bioaware.jpg)
 
-## Reproduce HyperFormer to guide the revision/improvement of data pipeline and training hyperparameters
+## Reproduce HyperFormer (2022)
 
-1. using our own pipeline - only got **80.83%**?!
+reproduce HyperFormer with **87.04%** test accuracy - lower than the official report **92.9%**, but the pipeline is generally acceptable! Only several hyperparameters are different:
 
-2. one person or two person? 
+1. num_person = 1 instead of 2
+2. no warmup instead of 5 epochs
+3. high dropout 0.5 instead of 0.0
 
 ## Meeting notes with Luming
 

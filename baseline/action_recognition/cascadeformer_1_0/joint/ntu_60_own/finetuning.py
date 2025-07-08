@@ -192,7 +192,11 @@ def finetuning(
          list(gait_head.parameters())
 
     optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, 
+        T_max=num_epochs,
+        eta_min=3e-6
+    )
 
     #criterion = nn.CrossEntropyLoss()
     # add label smoothing
