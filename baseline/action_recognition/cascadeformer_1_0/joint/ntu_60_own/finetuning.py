@@ -154,12 +154,10 @@ def finetuning(
     t2_dropout: float = 0.1,
     cross_attn_dropout: float = 0.1,
     unfreeze_layers: List[int] = None,
+    lr_lower_bound: float = 3e-6,
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
 ) -> Tuple[BaseT1, nn.Module, nn.Module]:
     
-    print(f"is T1 freezed? {freezeT1}")
-    print(f"unfreezing layers: {unfreeze_layers}")
-
     # freeze T1 parameters
     if freezeT1:
         for param in t1.parameters():
@@ -195,7 +193,7 @@ def finetuning(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, 
         T_max=num_epochs,
-        eta_min=3e-6 # FIXME: tune the lower bound for the learning rate! 
+        eta_min=lr_lower_bound
     )
 
     #criterion = nn.CrossEntropyLoss()
@@ -312,18 +310,19 @@ def finetuning(
         scheduler.step()
 
         current_lr = optimizer.param_groups[0]['lr']
-        print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
+        #tqdm.write(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
+        print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}", flush=True)
 
     # return T2, cross_attn, and gait_head
     return t2, cross_attn, gait_head
 
 
-def load_T2(model_path: str,d_model: int = 128, nhead: int = 4, num_layers: int = 2,
+def load_T2(model_path: str,d_model: int = 128, nhead: int = 4, num_layers: int = 2, t2_dropout: float = 0.1,
                 device: str = 'cuda' if torch.cuda.is_available() else 'cpu') -> BaseT2:
     """
         loads a BaseT2 model from a checkpoint
     """
-    model = BaseT2(d_model=d_model, nhead=nhead, num_layers=num_layers)
+    model = BaseT2(d_model=d_model, nhead=nhead, num_layers=num_layers, dropout=t2_dropout)
     model.load_state_dict(torch.load(model_path, map_location='cpu'))
 
     for param in model.parameters():

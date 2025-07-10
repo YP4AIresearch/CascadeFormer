@@ -4,7 +4,6 @@ import argparse
 from NTU_feeder import Feeder
 from NTU_pretraining import train_T1, BaseT1
 from finetuning import load_T1, finetuning, GaitRecognitionHeadMLP
-
 from penn_utils import set_seed
 from NTU_utils import NUM_JOINTS_NTU
 
@@ -38,30 +37,20 @@ def main():
     WINDOW_SIZE = 64
     T2_DROPOUT = 0.2
     CROSS_ATTN_DROPOUT = 0.2
-    HEAD_DROPOUT = 0.5 # 0.6, 0.7
+    HEAD_DROPOUT = 0.2  # ✅ More balanced choice
+    LR_LOWER_BOUND = 1e-6 # tune the lower bound for the learning rate
 
     mask_strategy = "global_joint"
     num_classes = 60 # NTU has 60 classes
     mask_ratio = 0.3
-    val_ratio = 0.05
-
-    print(f"pretrain?: {pretrain}")
 
     # transformer parameters
     hidden_size = 768 # 256, 512, 768
     n_heads = 16
     num_layers = 16
-    print(f"hidden_size: {hidden_size}")
-    print(f"n_heads: {n_heads}")
-    print(f"num_layers: {num_layers}")
-    print(f"batch_size: {batch_size}")
 
     # Set the device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    print("=" * 50)
-    print(f"[INFO] Starting NTU dataset processing on {device}...")
-    print("=" * 50)
 
     # load the dataset
     import time
@@ -113,17 +102,17 @@ def main():
         debug=False
     )
     t_end = time.time()
-    print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds")
+    print(f"[INFO] Time taken to load NTU skeletons: {t_end - t_start:.2f} seconds", flush=True)
 
     if pretrain: 
         """
             pretraining on the whole dataset
         """
 
-        print("\n==========================")
-        print("Starting Pretraining...")
-        print("==========================")
-        
+        print("\n==========================", flush=True)
+        print("Starting Pretraining...", flush=True)
+        print("==========================", flush=True)
+
         # instantiate the model
         three_d = True
 
@@ -137,14 +126,9 @@ def main():
         
         # training
         # dataset, model, num_epochs=50, batch_size=16, lr=1e-4, mask_ratio=0.15, device='cuda'):
-        if mask_ratio is not None:
-            print(f"[INFO] Mask ratio: {mask_ratio * 100}%")
-        else:
-            print("[INFO] no masked pretraining, only regular pretraining")
 
         lr = 1e-4
-        print(f"[INFO] Mask ratio: {mask_ratio * 100}%")
-        print(f"[INFO] train/val split ratio: {val_ratio * 100}%")
+        print(f"[INFO] Mask ratio: {mask_ratio * 100}%", flush=True)
         train_T1(
             masking_strategy=mask_strategy,
             train_dataset=train_dataset,
@@ -160,13 +144,13 @@ def main():
         # save pretrained model 
         torch.save(model.state_dict(), "action_checkpoints/NTU_NONE/NTU_pretrained.pt")
 
-        print("Aha! pretraining is done!")
-        print("=" * 100)
-    
-    
-    print("=" * 100)
-    print("=" * 100)
-    print("=" * 100)
+        print("Aha! pretraining is done!", flush=True)
+        print("=" * 100, flush=True)
+
+
+    print("=" * 100, flush=True)
+    print("=" * 100, flush=True)
+    print("=" * 100, flush=True)
 
     # load T1 models
     three_d = True
@@ -181,7 +165,7 @@ def main():
         device=device
     )
 
-    print("pretrained model loaded successfully!")
+    print("pretrained model loaded successfully!", flush=True)
 
 
     train_finetuning_dataloader = torch.utils.data.DataLoader(
@@ -205,14 +189,6 @@ def main():
     freezeT1 = False
     unfreeze_layers = None # freeze all layers
 
-    if freezeT1 and (unfreeze_layers is None):
-        print("[INFO] freezing the entire T1 model...")
-    elif freezeT1 and (unfreeze_layers is not None):
-        print("[INFO] layerwise finetuning...")
-        print(f"[INFO] unfreezing layers: {unfreeze_layers}...")
-    elif not freezeT1:
-        print("[INFO] finetuning the entire T1 model...")
-
     ft_lr = 3e-5
     wd = 1e-2
     trained_T2, train_cross_attn, train_head = finetuning(
@@ -230,12 +206,11 @@ def main():
         t2_dropout=T2_DROPOUT,
         cross_attn_dropout=CROSS_ATTN_DROPOUT,
         unfreeze_layers=unfreeze_layers,
+        lr_lower_bound=LR_LOWER_BOUND,
         device=device
     )
 
-    print("Aha! Finetuning completed successfully!")
-    if unfreeze_layers is not None:
-        print(f"[INFO] Unfreezing layers: {unfreeze_layers}...")
+    print("Aha! Finetuning completed successfully!", flush=True)
 
     # save the finetuned models
     torch.save(trained_T2.state_dict(), "action_checkpoints/NTU_NONE/NTU_finetuned_T2.pt")
@@ -245,7 +220,7 @@ def main():
     if any(param.requires_grad for param in t1.parameters()):
         torch.save(t1.state_dict(), "action_checkpoints/NTU_NONE/NTU_finetuned_T1.pt")
 
-    print("Aha! finetuned models saved successfully!")
+    print("Aha! finetuned models saved successfully!", flush=True)
 
 
 if __name__ == "__main__":

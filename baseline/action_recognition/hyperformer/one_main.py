@@ -220,7 +220,7 @@ def main():
         graph_args={'labeling_mode': 'spatial'},
         joint_label=JOINT_LABELS,
         in_channels=3,
-        drop_out=0.5,
+        drop_out=0.0,
         num_of_heads=9
     ).to(device)
     model.load_state_dict(torch.load("action_checkpoints/HYPER_DOUBLE/NTU_hyperformer.pt"))

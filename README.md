@@ -22,7 +22,7 @@ Conclusion🥹: we perhaps need to do 'smart' joint embedding like this instead 
 
 reproduce HyperFormer with **87.04%** test accuracy - lower than the official report **92.9%**, but the pipeline is generally acceptable! Only several hyperparameters are different:
 
-1. num_person = 1 instead of 2
+1. num_person = 1 instead of 2?
 2. no warmup instead of 5 epochs
 3. high dropout 0.5 instead of 0.0
 
@@ -36,9 +36,9 @@ reproduce HyperFormer with **87.04%** test accuracy - lower than the official re
 | dataset | #videos | #joints | SoTA acc | CF 1.0 | CF 1.1 | CF 1.2 | CF 1.3 | CF 1.4 |
 | ------- | ------- | ---------- | ------- | ------ | ------- | ------ | ------- | ------- |
 | Penn Action | 2,326 | 13, 2D | 93.4% (HDM-BG) | **94.66%** [checkpoint](https://drive.google.com/drive/folders/1Za50ZE9ZEKdEps_ZE-JIbatTpLuMW83k) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1Jl7lIVcbqw6W2xzvf09nVRERXHIFrjXn); **94.01%** [checkpoint](https://drive.google.com/drive/folders/1jAlH7pf-zaHy7CVIF3MAmiZ5mMtDw2j-) | N/A | N/A | 
-| N-UCLA | 1,494 | 20, 3D | 98.3% (SkateFormer) | **88.79%** | **91.16%** [checkpoint](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [checkpoint](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) | **90.73%** [checkpoint](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) | N/A | N/A |
-| NTU/CS | 56,880 | 25, 3D | 92.6% (SkateFormer) | **75.22%** | **74.10%** | **73.56%** | **68.98%** | **73.36%** | 
-| NTU/CS, new data pipeline | 56,880 | 25, 3D | 92.6% (SkateFormer) | **76.36%** [checkpoint](https://drive.google.com/drive/folders/1I-WfaXfITZqCwjJyi2ei9E1NumfPFIlI) | **TBD** | **TBD** | **TBD** | **TBD** |
+| N-UCLA | 1,494 | 20, 3D | 98.3% (SkateFormer) | 88.79% | **91.16%** [checkpoint](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [checkpoint](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) | **90.73%** [checkpoint](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) | N/A | N/A |
+| NTU/CS | 56,880 | 25, 3D | 92.6% (SkateFormer) | **75.22%** | 74.10% | 73.56% | 68.98% | **73.36%** | 
+| NTU/CS, new data pipeline | 56,880 | 25, 3D | 92.6% (SkateFormer) | **77.16%** [checkpoint](https://drive.google.com/drive/folders/1I-WfaXfITZqCwjJyi2ei9E1NumfPFIlI) | TBD | TBD | TBD | TBD |
 | NTU/CV | 56,880 | 25, 3D | 97.0% (SkateFormer) | N/A | N/A | N/A | N/A | N/A |
 
 ## Tuning Diagram

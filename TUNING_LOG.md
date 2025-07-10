@@ -213,16 +213,6 @@ cross-subject evaluation:
 | 30%, 64+1.0 | linear | **800** | 8 | **2** | no | 1e-4 | 100 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 100 | 58.29%, 20% validation |
 | 30%, 64+1.0 | linear | **800** | 8 | **4** | no | 1e-4 | 25 | 3e-5, wd=1e-2, CosineAnnealingLR, epoch-level | 25 | 58.29%, 20% validation |
 
-
-Hyperformer reproduction:
-
-```bash
-
-```
-
-
-
-
 ## Baseline - Experiment (NW-UCLA, cross-view)
 
 ![alt text](docs/NTU_comparison.png)
@@ -307,3 +297,9 @@ Use SkateFormer data loader instead of my own data loader because:
 This is my current backbone:
 | **30%**, **p=0.1**, repeat=**10** | linear | 256 | 8 | 4 | no | 1e-4 |
 
+
+
+```bash
+running 1207438!
+CUDA_VISIBLE_DEVICES=0 taskset -c 21-30 nohup python3 baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/NTU_main.py --num_epochs 150 > 150_epoch.txt 2>&1 & 
+```
