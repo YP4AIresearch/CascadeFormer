@@ -317,6 +317,193 @@ def finetuning(
     return t2, cross_attn, gait_head
 
 
+
+def finetuning_both(
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    t1: BaseT1,
+    gait_head: nn.Module,
+    d_model: int = 128,
+    nhead: int = 4,
+    num_layers: int = 2,
+    num_epochs: int = 200,
+    lr: float = 1e-5,
+    wd: float = 1e-2,
+    freezeT1: bool = True,
+    t2_dropout: float = 0.1,
+    cross_attn_dropout: float = 0.1,
+    unfreeze_layers: List[int] = None,
+    lr_lower_bound: float = 3e-6,
+    device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
+) -> Tuple[BaseT1, nn.Module, nn.Module]:
+    
+    # freeze T1 parameters
+    if freezeT1:
+        for param in t1.parameters():
+            param.requires_grad = False
+
+        # unfreeze specific layers if specified
+        if unfreeze_layers is not None:
+            for layer in unfreeze_layers:
+                for param in t1.transformer_encoder.layers[layer].parameters():
+                    param.requires_grad = True
+    else:
+        for param in t1.parameters():
+            param.requires_grad = True
+    t1.to(device)
+    gait_head.to(device)
+
+    # intialize T2 transformer and cross-attention
+    t2 = BaseT2(d_model, nhead, num_layers, dropout=t2_dropout).to(device)
+    #cross_attn = SimpleCrossAttention(d_model, nhead).to(device)
+    cross_attn = CrossAttentionWithFFN(
+        d_model=d_model,
+        nhead=nhead,
+        dropout=cross_attn_dropout
+    ).to(device)
+
+    # optimizer and loss
+    params = list(filter(lambda p: p.requires_grad, t1.parameters())) + \
+         list(t2.parameters()) + \
+         list(cross_attn.parameters()) + \
+         list(gait_head.parameters())
+
+    optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, 
+        T_max=num_epochs,
+        eta_min=lr_lower_bound
+    )
+
+    # add label smoothing
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
+
+    train_losses, val_losses = [], []
+    train_accuracies, val_accuracies = [], []
+
+    for epoch in tqdm(range(num_epochs)):
+        gait_head.train()
+        t2.train()
+        cross_attn.train()
+
+        t1_trainable = any(p.requires_grad for p in t1.parameters())
+        t1.train(mode=t1_trainable)
+
+        total_loss, correct, total = 0.0, 0, 0
+        for i, (skeletons, labels, _) in enumerate(train_loader):
+            skeletons = skeletons.to(device)
+            labels = labels.to(device)
+            # Preprocessing sequences from CTR-GCN-style input
+            B, C, T, V, M = skeletons.shape
+            sequences = skeletons.permute(0, 2, 3, 1, 4)
+
+            # Step 1: Permute to (B, M, V, C, T)
+            sequences = sequences.permute(0, 4, 3, 1, 2)  # (B, M, V, C, T)
+
+            # Step 2: Flatten batch and person
+            sequences = sequences.reshape(B * M, C, T, V).permute(0, 2, 3, 1)  # (B*M, C, T, V) → (B*M, T, V, C)
+            sequences = sequences.float().to(device)  # (B, T, J, D)
+
+            if t1_trainable:
+                x1 = t1.encode(sequences)  # grads will flow
+            else:
+                with torch.no_grad():
+                    x1 = t1.encode(sequences)  # frozen model, no grads
+
+            x2 = t2.encode(x1)
+            fused = cross_attn(x1, x2, x2)
+
+            # we need to do pooling
+            # other than mean pooling, we can do Adaptive Pooling 
+            pooled = fused.mean(dim=1)
+            logits = gait_head(pooled)
+
+            if sequences.shape[0] != labels.shape[0]:
+                # You flattened the person dimension (B*M), so replicate labels accordingly
+                M = sequences.shape[0] // labels.shape[0]
+                labels = labels.unsqueeze(1).repeat(1, M).view(-1)
+
+            loss = criterion(logits, labels)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item() * labels.size(0)
+            correct += (logits.argmax(dim=1) == labels).sum().item()
+            total += labels.size(0)
+
+
+        train_acc = correct / total
+        avg_loss = total_loss / total
+        train_losses.append(avg_loss)
+        train_accuracies.append(train_acc)
+
+        # Validation
+        t1.eval()
+        gait_head.eval()
+        t2.eval()
+        cross_attn.eval()
+        val_total_loss, val_correct, val_total = 0.0, 0, 0
+
+        with torch.no_grad():
+            for skeletons, labels, _ in val_loader:
+                skeletons = skeletons.to(device)
+                labels = labels.to(device)
+                # Preprocessing sequences from CTR-GCN-style input
+                B, C, T, V, M = skeletons.shape
+                sequences = skeletons.permute(0, 2, 3, 1, 4)
+
+                # Step 1: Permute to (B, M, V, C, T)
+                sequences = sequences.permute(0, 4, 3, 1, 2)  # (B, M, V, C, T)
+
+                # Step 2: Flatten batch and person
+                sequences = sequences.reshape(B * M, C, T, V).permute(0, 2, 3, 1)  # (B*M, C, T, V) → (B*M, T, V, C)
+                sequences = sequences.float().to(device)  # (B, T, J, D)
+
+                x1 = t1.encode(sequences)  # (B, T, J, D)
+
+                # # add a CLS token
+                # B = x1.size(0)
+                # cls_token = torch.zeros(B, 1, d_model).to(x1.device)
+                # x1 = torch.cat([cls_token, x1], dim=1)  # prepend CLS
+
+                x2 = t2.encode(x1)
+                fused = cross_attn(x1, x2, x2)
+
+                # we need to do pooling
+                pooled = fused.mean(dim=1)
+                # CLS token pooling
+                #pooled = fused[:, 0]  # take the [CLS] token
+                logits = gait_head(pooled)
+                if sequences.shape[0] != labels.shape[0]:
+                    # You flattened the person dimension (B*M), so replicate labels accordingly
+                    M = sequences.shape[0] // labels.shape[0]
+                    labels = labels.unsqueeze(1).repeat(1, M).view(-1)
+
+                val_loss = criterion(logits, labels)
+                val_total_loss += val_loss.item() * labels.size(0)
+                
+                val_correct += (logits.argmax(dim=1) == labels).sum().item()
+                val_total += labels.size(0)
+
+        val_acc = val_correct / val_total
+        val_avg_loss = val_total_loss / val_total
+
+        val_losses.append(val_avg_loss)
+        val_accuracies.append(val_acc)
+        scheduler.step()
+
+        current_lr = optimizer.param_groups[0]['lr']
+        #tqdm.write(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")
+        print(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}", flush=True)
+
+    # return T2, cross_attn, and gait_head
+    return t2, cross_attn, gait_head
+
+
+
+
+
 def load_T2(model_path: str,d_model: int = 128, nhead: int = 4, num_layers: int = 2, t2_dropout: float = 0.1,
                 device: str = 'cuda' if torch.cuda.is_available() else 'cpu') -> BaseT2:
     """
