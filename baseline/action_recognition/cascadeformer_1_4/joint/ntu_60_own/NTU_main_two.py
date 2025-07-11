@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import argparse
 from NTU_feeder import Feeder

@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -196,7 +197,6 @@ def finetuning(
         eta_min=lr_lower_bound
     )
 
-    #criterion = nn.CrossEntropyLoss()
     # add label smoothing
     criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
 
@@ -318,6 +318,29 @@ def finetuning(
 
 
 
+def adjust_learning_rate(
+        epoch: int, 
+        optimizer: torch.optim.SGD, 
+        warm_up_epoch: int = 5, # match official!
+        base_lr: float = 0.025, # match official! 
+        lr_decay_rate: float = 0.1, # match official! 
+        step: list = [110, 120] # match official!
+    ):
+    """ Custom learning rate warm-up and decay function."""
+    if epoch < warm_up_epoch:
+        lr = base_lr * (epoch + 1) / warm_up_epoch
+    else:
+        lr = base_lr * (
+                lr_decay_rate ** np.sum(epoch >= np.array(step)))
+        
+    # adjust the learning rate for the optimizer
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+    
+    # return it for sanity check
+    return lr
+
+
 def finetuning_both(
     train_loader: DataLoader,
     val_loader: DataLoader,
@@ -368,12 +391,23 @@ def finetuning_both(
          list(cross_attn.parameters()) + \
          list(gait_head.parameters())
 
-    optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, 
-        T_max=num_epochs,
-        eta_min=lr_lower_bound
+    #optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=wd)
+
+    optimizer = torch.optim.SGD(
+        params,
+        lr=lr,
+        momentum=0.9,
+        nesterov=True, # match!
+        weight_decay=wd
     )
+
+
+    
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    #     optimizer, 
+    #     T_max=num_epochs,
+    #     eta_min=lr_lower_bound
+    # )
 
     # add label smoothing
     criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
@@ -382,6 +416,9 @@ def finetuning_both(
     train_accuracies, val_accuracies = [], []
 
     for epoch in tqdm(range(num_epochs)):
+        # adjust learning rate at the BEGINNING of each epoch
+        lr = adjust_learning_rate(epoch, optimizer, warm_up_epoch=5, base_lr=lr, lr_decay_rate=0.1, step=[110, 120])
+
         gait_head.train()
         t2.train()
         cross_attn.train()
@@ -491,7 +528,7 @@ def finetuning_both(
 
         val_losses.append(val_avg_loss)
         val_accuracies.append(val_acc)
-        scheduler.step()
+        #scheduler.step()
 
         current_lr = optimizer.param_groups[0]['lr']
         #tqdm.write(f"Epoch {epoch+1}/{num_epochs}: LR = {current_lr:.6f}, Train Acc = {train_acc:.4f}, Val Acc = {val_acc:.4f}")

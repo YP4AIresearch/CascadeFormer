@@ -3,9 +3,6 @@ import torch
 from sklearn.metrics import accuracy_score
 import argparse
 from typing import Tuple
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix
 from torch import nn
 from torch.utils.data import DataLoader
 from NTU_feeder import Feeder
@@ -56,21 +53,20 @@ def evaluate(
 
     with torch.no_grad():
         for skeletons, labels, _ in data_loader:
-            skeletons, labels = skeletons.to(device), labels.to(device)
-
+            skeletons = skeletons.to(device)
+            labels = labels.to(device)
             # Preprocessing sequences from CTR-GCN-style input
             B, C, T, V, M = skeletons.shape
             sequences = skeletons.permute(0, 2, 3, 1, 4)
 
-            # Select most active person (M=1)
-            motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
-            main_person_idx = motion.argmax(dim=-1)       # (B,)
+            # Step 1: Permute to (B, M, V, C, T)
+            sequences = sequences.permute(0, 4, 3, 1, 2)  # (B, M, V, C, T)
 
-            indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
-            sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
-            skeletons = sequences.float().to(device)  # (B, T, J, D)
+            # Step 2: Flatten batch and person
+            sequences = sequences.reshape(B * M, C, T, V).permute(0, 2, 3, 1)  # (B*M, C, T, V) → (B*M, T, V, C)
+            sequences = sequences.float().to(device)  # (B, T, J, D)
 
-            x1 = t1.encode(skeletons)
+            x1 = t1.encode(sequences)
             x2 = t2.encode(x1)
             fused = cross_attn(x1, x2, x2)
             pooled = fused.mean(dim=1)
@@ -86,7 +82,7 @@ def evaluate(
 
     accuracy = accuracy_score(all_labels, all_preds)
 
-    return accuracy, all_preds, all_labels
+    return accuracy
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Gait Recognition Inference")
@@ -160,7 +156,7 @@ def main():
     print("=" * 50)
     print("[INFO] Starting evaluation...")
     print("=" * 50)
-    accuracy, all_preds, all_labels = evaluate(
+    accuracy = evaluate(
         test_loader,
         t1,
         t2,
@@ -169,36 +165,8 @@ def main():
         device=device
     )
 
-
-    conf_mat = confusion_matrix(all_labels.numpy(), all_preds.numpy(), labels=np.arange(num_classes))
-
-    # Normalize confusion matrix by true class (row-wise normalization)
-    conf_mat_normalized = conf_mat.astype(np.float32) / conf_mat.sum(axis=1, keepdims=True)
-
-    plt.figure(figsize=(12, 10))
-    sns.heatmap(conf_mat_normalized, cmap="viridis", square=True,
-                cbar_kws={'label': 'Normalized Frequency'},
-                xticklabels=False, yticklabels=False)
-
-    plt.title("Normalized Confusion Matrix (Covariance-like Visualization)", fontsize=14)
-    plt.xlabel("Predicted Class")
-    plt.ylabel("True Class")
-    plt.tight_layout()
-    plt.savefig("ntu_confusion_matrix.png", dpi=300)
-
-    # Define the 11 two-person interaction class indices (from NTU60)
-    two_person_class_indices = list(range(49, 60))
-
-    # Per-class accuracy
-    class_accuracies = conf_mat.diagonal() / conf_mat.sum(axis=1)
-    two_person_acc = class_accuracies[two_person_class_indices]
-    non_two_person_indices = [i for i in range(60) if i not in two_person_class_indices]
-    non_two_person_acc = class_accuracies[non_two_person_indices]
-
     print("=" * 50)
     print("[INFO] Evaluation completed!")
-    print(f"two-person interaction accuracy: {two_person_acc.mean():.4f}")
-    print(f"non-two-person interaction accuracy: {non_two_person_acc.mean():.4f}")
     print(f"Final Accuracy: {accuracy:.4f}")
     print("=" * 50)
 
