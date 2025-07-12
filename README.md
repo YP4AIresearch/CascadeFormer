@@ -24,14 +24,6 @@ Conclusion🥹: we perhaps need to do 'smart' joint embedding like this instead 
 | ------------------ | ---------- | --------------- |
 | 87.04% | 90.57% | 92.9% |
 
-## NTU covairance matrix
-
-- two-person interaction accuracy: 79.80%
-- non-two-person interaction accuracy: 76.65%
-- Final Accuracy: 77.24%
-
-![alt text](/ntu_confusion_matrix.png)
-
 ## Leaderboard
 
 | dataset | #videos | #joints | SoTA acc | CF 1.0 | CF 1.1 | CF 1.2 | CF 1.3 | CF 1.4 |
@@ -39,7 +31,7 @@ Conclusion🥹: we perhaps need to do 'smart' joint embedding like this instead 
 | Penn Action | 2,326 | 13, 2D | 93.4% (HDM-BG) | **94.66%** [checkpoint](https://drive.google.com/drive/folders/1Za50ZE9ZEKdEps_ZE-JIbatTpLuMW83k) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1Jl7lIVcbqw6W2xzvf09nVRERXHIFrjXn); **94.01%** [checkpoint](https://drive.google.com/drive/folders/1jAlH7pf-zaHy7CVIF3MAmiZ5mMtDw2j-) | N/A | N/A | 
 | N-UCLA | 1,494 | 20, 3D | 98.3% (SkateFormer) | 88.79% | **91.16%** [checkpoint](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha); **90.52%** [checkpoint](https://drive.google.com/drive/folders/10v1zGGhziiRZdXO2mDU-db_keVmmeUNY) | **90.73%** [checkpoint](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) | N/A | N/A |
 | NTU/CS | 56,880 | 25, 3D | 92.6% (SkateFormer) | **75.22%** | 74.10% | 73.56% | 68.98% | **73.36%** | 
-| NTU/CS, new data pipeline | 56,880 | 25, 3D | 92.6% (SkateFormer) | **77.24%** [checkpoint](https://drive.google.com/drive/folders/1eKcX4wE6UweV0EviHUPzltzivjYAHjeI) | TBD | TBD | TBD | running! |
+| NTU/CS, new data pipeline | 56,880 | 25, 3D | 92.6% (SkateFormer) | **81.01%** [checkpoint](https://drive.google.com/drive/folders/1eKcX4wE6UweV0EviHUPzltzivjYAHjeI) | TBD | TBD | TBD | TBD |
 | NTU/CV | 56,880 | 25, 3D | 97.0% (SkateFormer) | N/A | N/A | N/A | N/A | N/A |
 
 ## Tuning Diagram

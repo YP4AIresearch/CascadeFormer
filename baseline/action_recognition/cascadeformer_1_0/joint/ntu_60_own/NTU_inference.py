@@ -199,7 +199,7 @@ def main():
     print("[INFO] Evaluation completed!")
     print(f"two-person interaction accuracy: {two_person_acc.mean():.4f}")
     print(f"non-two-person interaction accuracy: {non_two_person_acc.mean():.4f}")
-    print(f"Final Accuracy: {accuracy:.4f}")
+    print(f"🥶Final Accuracy🥶: {accuracy:.4f}🥶")
     print("=" * 50)
 
 
