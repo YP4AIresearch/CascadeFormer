@@ -37,7 +37,7 @@ def main():
     WINDOW_SIZE = 64
     T2_DROPOUT = 0.2
     CROSS_ATTN_DROPOUT = 0.2
-    HEAD_DROPOUT = 0.2  # ✅ More balanced choice
+    HEAD_DROPOUT = 0.3  # used to be 0.2
     LR_LOWER_BOUND = 1e-6 # tune the lower bound for the learning rate
 
     mask_strategy = "global_joint"
@@ -189,7 +189,7 @@ def main():
     freezeT1 = False
     unfreeze_layers = None # freeze all layers
 
-    ft_lr = 3e-5
+    ft_lr = 1e-4 # it used to be 3e-5
     wd = 1e-2
     trained_T2, train_cross_attn, train_head = finetuning(
         train_loader=train_finetuning_dataloader,
