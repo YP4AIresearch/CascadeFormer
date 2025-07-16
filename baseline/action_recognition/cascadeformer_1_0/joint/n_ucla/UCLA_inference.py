@@ -87,7 +87,6 @@ def main():
     set_seed(42)
 
     args = parse_args()
-    root_dir = args.root_dir
     # get the number of classes from the root_dir by taking the trailing number
     batch_size = args.batch_size
     device = args.device
@@ -96,7 +95,7 @@ def main():
 
     hidden_size = 256
     n_heads = 8
-    num_layers = 4
+    num_layers = 12
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     print("=" * 50)

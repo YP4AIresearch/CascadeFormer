@@ -39,15 +39,23 @@ def main():
     CROSS_ATTN_DROPOUT = 0.2
     HEAD_DROPOUT = 0.3  # used to be 0.2
     LR_LOWER_BOUND = 1e-6 # tune the lower bound for the learning rate
+    SPLIT = "CV" # "CS" for cross subject, "CV" for cross view
+
+    if SPLIT == "CS":
+        DATA_PATH = "NTU60_CS.npz" # for cross subject
+    elif SPLIT == "CV":
+        DATA_PATH = "NTU60_CV.npz" # for cross view
+    else:
+        raise ValueError("Invalid split type. Choose either 'CS' or 'CV'.")
 
     mask_strategy = "global_joint"
     num_classes = 60 # NTU has 60 classes
     mask_ratio = 0.3
 
     # transformer parameters
-    hidden_size = 768 # 256, 512, 768
-    n_heads = 16
-    num_layers = 16
+    hidden_size = 512 # 768 for CS, 512 for CV
+    n_heads = 8 # 16 for CS, 8 for CV
+    num_layers = 12 # 16 for CS, 12 for CV
 
     # Set the device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -70,7 +78,7 @@ def main():
     #   vel: False
     #   bone: False
     train_dataset = Feeder(
-        data_path="NTU60_CS.npz",
+        data_path=DATA_PATH,
         split='train',
         debug=False,
         random_choose=False,
@@ -93,7 +101,7 @@ def main():
     #   bone: False
     #   debug: False
     val_dataset = Feeder(
-        data_path="NTU60_CS.npz",
+        data_path=DATA_PATH,
         split='test',
         window_size=WINDOW_SIZE,
         p_interval=[0.95],
@@ -142,7 +150,7 @@ def main():
         )
 
         # save pretrained model 
-        torch.save(model.state_dict(), "action_checkpoints/NTU_NONE/NTU_pretrained.pt")
+        torch.save(model.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_pretrained.pt")
 
         print("Aha! pretraining is done!", flush=True)
         print("=" * 100, flush=True)
@@ -155,7 +163,7 @@ def main():
     # load T1 models
     three_d = True
     t1 = load_T1(
-        model_path="action_checkpoints/NTU_NONE/NTU_pretrained.pt",
+        model_path=f"action_checkpoints/NTU_{SPLIT}/NTU_pretrained.pt",
         num_joints=NUM_JOINTS_NTU,
         three_d=three_d,
         d_model=hidden_size,
@@ -213,12 +221,12 @@ def main():
     print("Aha! Finetuning completed successfully!", flush=True)
 
     # save the finetuned models
-    torch.save(trained_T2.state_dict(), "action_checkpoints/NTU_NONE/NTU_finetuned_T2.pt")
-    torch.save(train_cross_attn.state_dict(), "action_checkpoints/NTU_NONE/NTU_finetuned_cross_attn.pt")
-    torch.save(train_head.state_dict(), "action_checkpoints/NTU_NONE/NTU_finetuned_head.pt")
+    torch.save(trained_T2.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_T2.pt")
+    torch.save(train_cross_attn.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_cross_attn.pt")
+    torch.save(train_head.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_head.pt")
 
     if any(param.requires_grad for param in t1.parameters()):
-        torch.save(t1.state_dict(), "action_checkpoints/NTU_NONE/NTU_finetuned_T1.pt")
+        torch.save(t1.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_T1.pt")
 
     print("Aha! finetuned models saved successfully!", flush=True)
 

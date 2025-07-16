@@ -130,7 +130,7 @@ def finetuning(
          list(gait_head.parameters())
 
     #optimizer = optim.Adam(params, lr=lr, weight_decay=1e-4)
-    optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=1e-2)
     num_training_steps = num_epochs
     num_warmup_steps = int(0.05 * num_training_steps)
 
@@ -141,12 +141,6 @@ def finetuning(
     )
 
     criterion = nn.CrossEntropyLoss()
-
-    # scheduler = CosineAnnealingLR(
-    #     optimizer,
-    #     T_max=num_epochs,
-    #     eta_min=1e-7
-    # )
 
     train_losses, val_losses = [], []
     train_accuracies, val_accuracies = [], []
