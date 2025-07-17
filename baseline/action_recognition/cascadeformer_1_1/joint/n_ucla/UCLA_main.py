@@ -244,8 +244,6 @@ def main():
             gait_head=train_head,
             device=device
         )
-        print("💎"* 20)
-        print(f"[INFO] Final accuracy after finetuning: {final_acc:.4f}")
 
         # save the finetuned models
         torch.save(trained_T2.state_dict(), "action_checkpoints/NUCLA_finetuned_T2.pt")
@@ -301,7 +299,10 @@ def main():
     )
 
     print("[INFO] Evaluation completed!")
-    print(f"Final Accuracy: {accuracy:.4f}")
+    print("💎"* 20)
+    print(f"💎Final Accuracy: {accuracy:.4f}💎")
+    print("💎"* 20)
+
 
 
 if __name__ == "__main__":
