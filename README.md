@@ -30,8 +30,8 @@ Conclusion: we perhaps need to do 'smart' **joint** embedding like this instead 
 | ------- | ------- | ---------- | ------ | ------- | ------ | ------- | ------- |
 | Penn Action | 2,326 | 13, 2D | **94.66%** [checkpoint](https://drive.google.com/drive/folders/1Za50ZE9ZEKdEps_ZE-JIbatTpLuMW83k) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1qbcT8DlhNyT3HgbM3j2aEQP2rSXoEJRS) | **94.10%** [checkpoint](https://drive.google.com/drive/folders/1Jl7lIVcbqw6W2xzvf09nVRERXHIFrjXn) | N/A | N/A | 
 | N-UCLA | 1,494 | 20, 3D | **89.66%** [checkpoint](https://drive.google.com/drive/folders/1ncVqXBd2P-SMDD_OCZaGyEti2LVfwiw8) | **91.16%** [checkpoint](https://drive.google.com/drive/folders/1b0IuO_XY-Gwv4RjS6gF9gPG36uvGwhha) | **90.73%** [checkpoint](https://drive.google.com/drive/folders/1IPSW5pz_Sn0dfywP2RatlnlrfVzPJNvB) | N/A | N/A |
-| NTU/CS | 56,880 | 25, 3D | **81.01%** [checkpoint](https://drive.google.com/drive/folders/1eKcX4wE6UweV0EviHUPzltzivjYAHjeI) | **79.62%**[checkpoint](https://drive.google.com/drive/folders/1Tf0cpzBpg8bg7M1LpxHla40Fcdvp27DY) | TBD | TBD | N/A |
-| NTU/CV | 56,880 | 25, 3D | **88.17%** [checkpoint](https://drive.google.com/drive/folders/1-VrOyJKEvCQig_S4HM4Tdae9S3Tsc5M_) | N/A | N/A | N/A | N/A |
+| NTU/CS | 56,880 | 25, 3D | **81.01%** [checkpoint](https://drive.google.com/drive/folders/1eKcX4wE6UweV0EviHUPzltzivjYAHjeI) | **79.62%** [checkpoint](https://drive.google.com/drive/folders/1Tf0cpzBpg8bg7M1LpxHla40Fcdvp27DY) | TBD | TBD | N/A |
+| NTU/CV | 56,880 | 25, 3D | **88.17%** [checkpoint](https://drive.google.com/drive/folders/1-VrOyJKEvCQig_S4HM4Tdae9S3Tsc5M_) | **86.86%** [checkpoint](https://drive.google.com/drive/folders/1iefjdPXuR_KiovzsPPzWqkeXdPB-yDIt) | N/A | N/A | N/A |
 
 ## Tuning Diagram
 

@@ -39,7 +39,7 @@ def main():
     CROSS_ATTN_DROPOUT = 0.2
     HEAD_DROPOUT = 0.3  # used to be 0.2
     LR_LOWER_BOUND = 1e-6 # tune the lower bound for the learning rate
-    SPLIT = "CV" # "CS" for cross subject, "CV" for cross view
+    SPLIT = "CS" # "CS" for cross subject, "CV" for cross view
 
     if SPLIT == "CS":
         DATA_PATH = "NTU60_CS.npz" # for cross subject
@@ -53,9 +53,9 @@ def main():
     mask_ratio = 0.3
 
     # transformer parameters
-    hidden_size = 512 # 768 for CS, 512 for CV
-    n_heads = 8 # 16 for CS, 8 for CV
-    num_layers = 12 # 16 for CS, 12 for CV
+    hidden_size = 800 # 800 for CS, 600 for CV
+    n_heads = 16 # 16 for CS, 8 for CV
+    num_layers = 16 # 16 for CS, 12 for CV
 
     # Set the device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
