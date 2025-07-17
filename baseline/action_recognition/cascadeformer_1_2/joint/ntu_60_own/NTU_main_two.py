@@ -2,16 +2,11 @@ import numpy as np
 import torch
 import argparse
 from NTU_feeder import Feeder
-from NTU_pretraining import train_T1, BaseT1
-from finetuning import load_T1, finetuning, GaitRecognitionHeadMLP
+from NTU_pretraining import train_T1_both, BaseT1
+from finetuning import load_T1, finetuning_both, GaitRecognitionHeadMLP
 from penn_utils import set_seed
 from NTU_utils import NUM_JOINTS_NTU
 
-def load_cached_data(path="ntu_cache_train_sub.npz"):
-    data = np.load(path, allow_pickle=True)
-    sequences = list(data["sequences"])
-    labels = list(data["labels"])
-    return sequences, labels
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Gait Recognition Training")
@@ -37,25 +32,17 @@ def main():
     WINDOW_SIZE = 64
     T2_DROPOUT = 0.2
     CROSS_ATTN_DROPOUT = 0.2
-    HEAD_DROPOUT = 0.3  # used to be 0.2
+    HEAD_DROPOUT = 0.2  # ✅ More balanced choice
     LR_LOWER_BOUND = 1e-6 # tune the lower bound for the learning rate
-    SPLIT = "CV" # "CS" for cross subject, "CV" for cross view
-
-    if SPLIT == "CS":
-        DATA_PATH = "NTU60_CS.npz" # for cross subject
-    elif SPLIT == "CV":
-        DATA_PATH = "NTU60_CV.npz" # for cross view
-    else:
-        raise ValueError("Invalid split type. Choose either 'CS' or 'CV'.")
 
     mask_strategy = "global_joint"
     num_classes = 60 # NTU has 60 classes
     mask_ratio = 0.3
 
     # transformer parameters
-    hidden_size = 512 # 768 for CS, 512 for CV
-    n_heads = 8 # 16 for CS, 8 for CV
-    num_layers = 12 # 16 for CS, 12 for CV
+    hidden_size = 768 # 256, 512, 768
+    n_heads = 16
+    num_layers = 16
 
     # Set the device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -78,7 +65,7 @@ def main():
     #   vel: False
     #   bone: False
     train_dataset = Feeder(
-        data_path=DATA_PATH,
+        data_path="NTU60_CS.npz",
         split='train',
         debug=False,
         random_choose=False,
@@ -101,7 +88,7 @@ def main():
     #   bone: False
     #   debug: False
     val_dataset = Feeder(
-        data_path=DATA_PATH,
+        data_path="NTU60_CS.npz",
         split='test',
         window_size=WINDOW_SIZE,
         p_interval=[0.95],
@@ -137,7 +124,7 @@ def main():
 
         lr = 1e-4
         print(f"[INFO] Mask ratio: {mask_ratio * 100}%", flush=True)
-        train_T1(
+        train_T1_both(
             masking_strategy=mask_strategy,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
@@ -150,7 +137,7 @@ def main():
         )
 
         # save pretrained model 
-        torch.save(model.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_pretrained.pt")
+        torch.save(model.state_dict(), "action_checkpoints/NTU_NONE_TWO/NTU_pretrained.pt")
 
         print("Aha! pretraining is done!", flush=True)
         print("=" * 100, flush=True)
@@ -163,7 +150,7 @@ def main():
     # load T1 models
     three_d = True
     t1 = load_T1(
-        model_path=f"action_checkpoints/NTU_{SPLIT}/NTU_pretrained.pt",
+        model_path="action_checkpoints/NTU_NONE_TWO/NTU_pretrained.pt",
         num_joints=NUM_JOINTS_NTU,
         three_d=three_d,
         d_model=hidden_size,
@@ -197,9 +184,9 @@ def main():
     freezeT1 = False
     unfreeze_layers = None # freeze all layers
 
-    ft_lr = 1e-4 # it used to be 3e-5
-    wd = 1e-2
-    trained_T2, train_cross_attn, train_head = finetuning(
+    ft_lr = 0.025
+    wd = 0.0004
+    trained_T2, train_cross_attn, train_head = finetuning_both(
         train_loader=train_finetuning_dataloader,
         val_loader=val_finetuning_dataloader,
         t1=t1,
@@ -221,12 +208,12 @@ def main():
     print("Aha! Finetuning completed successfully!", flush=True)
 
     # save the finetuned models
-    torch.save(trained_T2.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_T2.pt")
-    torch.save(train_cross_attn.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_cross_attn.pt")
-    torch.save(train_head.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_head.pt")
+    torch.save(trained_T2.state_dict(), "action_checkpoints/NTU_NONE_TWO/NTU_finetuned_T2.pt")
+    torch.save(train_cross_attn.state_dict(), "action_checkpoints/NTU_NONE_TWO/NTU_finetuned_cross_attn.pt")
+    torch.save(train_head.state_dict(), "action_checkpoints/NTU_NONE_TWO/NTU_finetuned_head.pt")
 
     if any(param.requires_grad for param in t1.parameters()):
-        torch.save(t1.state_dict(), f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_T1.pt")
+        torch.save(t1.state_dict(), "action_checkpoints/NTU_NONE_TWO/NTU_finetuned_T1.pt")
 
     print("Aha! finetuned models saved successfully!", flush=True)
 

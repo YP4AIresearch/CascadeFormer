@@ -3,9 +3,6 @@ import torch
 from sklearn.metrics import accuracy_score
 import argparse
 from typing import Tuple
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix
 from torch import nn
 from torch.utils.data import DataLoader
 from NTU_feeder import Feeder
@@ -56,21 +53,20 @@ def evaluate(
 
     with torch.no_grad():
         for skeletons, labels, _ in data_loader:
-            skeletons, labels = skeletons.to(device), labels.to(device)
-
+            skeletons = skeletons.to(device)
+            labels = labels.to(device)
             # Preprocessing sequences from CTR-GCN-style input
             B, C, T, V, M = skeletons.shape
             sequences = skeletons.permute(0, 2, 3, 1, 4)
 
-            # Select most active person (M=1)
-            motion = sequences.abs().sum(dim=(1, 2, 3))  # (B, M)
-            main_person_idx = motion.argmax(dim=-1)       # (B,)
+            # Step 1: Permute to (B, M, V, C, T)
+            sequences = sequences.permute(0, 4, 3, 1, 2)  # (B, M, V, C, T)
 
-            indices = main_person_idx.view(B, 1, 1, 1, 1).expand(-1, T, V, C, 1)
-            sequences = torch.gather(sequences, dim=4, index=indices).squeeze(-1)  # (B, T, V, C)
-            skeletons = sequences.float().to(device)  # (B, T, J, D)
+            # Step 2: Flatten batch and person
+            sequences = sequences.reshape(B * M, C, T, V).permute(0, 2, 3, 1)  # (B*M, C, T, V) → (B*M, T, V, C)
+            sequences = sequences.float().to(device)  # (B, T, J, D)
 
-            x1 = t1.encode(skeletons)
+            x1 = t1.encode(sequences)
             x2 = t2.encode(x1)
             fused = cross_attn(x1, x2, x2)
             pooled = fused.mean(dim=1)
@@ -86,7 +82,7 @@ def evaluate(
 
     accuracy = accuracy_score(all_labels, all_preds)
 
-    return accuracy, all_preds, all_labels
+    return accuracy
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Gait Recognition Inference")
@@ -108,22 +104,13 @@ def main():
     num_classes = 60  # NTU has 60 classes
     T2_DROPOUT = 0.2
     CROSS_ATTN_DROPOUT = 0.2
-    HEAD_DROPOUT = 0.3  # used to be 0.2
-    SPLIT = "CS" # "CS" for cross subject, "CV" for cross view
-
-    if SPLIT == "CS":
-        DATA_PATH = "NTU60_CS.npz" # for cross subject
-    elif SPLIT == "CV":
-        DATA_PATH = "NTU60_CV.npz" # for cross view
-    else:
-        raise ValueError("Invalid split type. Choose either 'CS' or 'CV'.")
+    HEAD_DROPOUT = 0.5 # 0.6, 0.7
 
     # Set the device
 
-    # transformer parameters
-    hidden_size = 768 # 768 for CS, 512 for CV
-    n_heads = 16 # 16 for CS, 8 for CV
-    num_layers = 16 # 16 for CS, 12 for CV
+    hidden_size = 768 # 256, 512, 768
+    n_heads = 16
+    num_layers = 16
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     print("=" * 50)
@@ -132,7 +119,7 @@ def main():
 
     # load the dataset
     test_dataset = Feeder(
-        data_path=DATA_PATH,
+        data_path="NTU60_CS.npz",
         split='test',
         window_size=WINDOW_SIZE,
         p_interval=[0.95],
@@ -147,19 +134,19 @@ def main():
     unfreeze_layers = "entire"
     if unfreeze_layers is None:
         print("************Freezing all layers")
-        t1 = load_T1(f"action_checkpoints/NTU_{SPLIT}/NTU_pretrained.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
+        t1 = load_T1("action_checkpoints/NTU_NONE/NTU_pretrained.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
     else:
-        t1 = load_T1(f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_T1.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
+        t1 = load_T1("action_checkpoints/NTU_NONE/NTU_finetuned_T1.pt", d_model=hidden_size, num_joints=NUM_JOINTS_NTU, three_d=True, nhead=n_heads, num_layers=num_layers, device=device)
         print(f"************Unfreezing layers: {unfreeze_layers}")
     
     # load T2 model
-    t2 = load_T2(f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, t2_dropout=T2_DROPOUT, device=device)
+    t2 = load_T2("action_checkpoints/NTU_NONE/NTU_finetuned_T2.pt", d_model=hidden_size, nhead=n_heads, num_layers=num_layers, t2_dropout=T2_DROPOUT, device=device)
     # load the cross attention module
-    cross_attn = load_cross_attn_with_ffn(f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device, nhead=n_heads, dropout=CROSS_ATTN_DROPOUT)
+    cross_attn = load_cross_attn_with_ffn("action_checkpoints/NTU_NONE/NTU_finetuned_cross_attn.pt", d_model=hidden_size, device=device, nhead=n_heads, dropout=CROSS_ATTN_DROPOUT)
 
     # load the gait recognition head
     gait_head = GaitRecognitionHeadMLP(input_dim=hidden_size, num_classes=num_classes, dropout=HEAD_DROPOUT)
-    gait_head.load_state_dict(torch.load(f"action_checkpoints/NTU_{SPLIT}/NTU_finetuned_head.pt", map_location="cpu"))
+    gait_head.load_state_dict(torch.load("action_checkpoints/NTU_NONE/NTU_finetuned_head.pt", map_location="cpu"))
     gait_head = gait_head.to(device)
 
     print("Aha! All models loaded successfully!")
@@ -169,7 +156,7 @@ def main():
     print("=" * 50)
     print("[INFO] Starting evaluation...")
     print("=" * 50)
-    accuracy, all_preds, all_labels = evaluate(
+    accuracy = evaluate(
         test_loader,
         t1,
         t2,
@@ -178,37 +165,9 @@ def main():
         device=device
     )
 
-
-    conf_mat = confusion_matrix(all_labels.numpy(), all_preds.numpy(), labels=np.arange(num_classes))
-
-    # Normalize confusion matrix by true class (row-wise normalization)
-    conf_mat_normalized = conf_mat.astype(np.float32) / conf_mat.sum(axis=1, keepdims=True)
-
-    plt.figure(figsize=(12, 10))
-    sns.heatmap(conf_mat_normalized, cmap="viridis", square=True,
-                cbar_kws={'label': 'Normalized Frequency'},
-                xticklabels=False, yticklabels=False)
-
-    plt.title("Normalized Confusion Matrix (Covariance-like Visualization)", fontsize=14)
-    plt.xlabel("Predicted Class")
-    plt.ylabel("True Class")
-    plt.tight_layout()
-    plt.savefig("ntu_confusion_matrix.png", dpi=300)
-
-    # Define the 11 two-person interaction class indices (from NTU60)
-    two_person_class_indices = list(range(49, 60))
-
-    # Per-class accuracy
-    class_accuracies = conf_mat.diagonal() / conf_mat.sum(axis=1)
-    two_person_acc = class_accuracies[two_person_class_indices]
-    non_two_person_indices = [i for i in range(60) if i not in two_person_class_indices]
-    non_two_person_acc = class_accuracies[non_two_person_indices]
-
     print("=" * 50)
     print("[INFO] Evaluation completed!")
-    print(f"two-person interaction accuracy: {two_person_acc.mean():.4f}")
-    print(f"non-two-person interaction accuracy: {non_two_person_acc.mean():.4f}")
-    print(f"🥶Final Accuracy🥶: {accuracy:.4f}🥶")
+    print(f"Final Accuracy: {accuracy:.4f}")
     print("=" * 50)
 
 
