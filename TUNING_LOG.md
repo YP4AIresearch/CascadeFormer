@@ -303,3 +303,16 @@ This is my current backbone:
 running 1207438!
 CUDA_VISIBLE_DEVICES=0 taskset -c 21-30 nohup python3 baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/NTU_main.py --num_epochs 150 > 150_epoch.txt 2>&1 & 
 ```
+
+
+## Ablation Study: bone representation (Penn Action and NTU/CS)
+
+| dataset | #videos | #actions | dimension | #joints | outperform SoTA? |
+| ------- | ------- | -------- | --------- | ---------- | ------- |
+| Penn Action, subtraction-bone | 2,326 | 15 | 2D | 13 | **92.32%** ~ 93.4% (HDM-BG) |
+| Penn Action, concatenation-bone | 2,326 | 15 | 2D | 13 | **93.16%** ~ 93.4% (HDM-BG) |
+| Penn Action, parameterization-bone | 2,326 | 15 | 2D | 13 | **93.91%** > 93.4% (HDM-BG) |
+| N-UCLA, subtraction-bone | 1,494 | 12 | 3D | 20 | **85.56%** < 98.3% (SkateFormer) |
+| N-UCLA, concatenation-bone | 1,494 | 12 | 3D | 20 | **88.15%** < 98.3% (SkateFormer) |
+| NTU/CS, subtraction-bone | 56,880 | 60 | 3D | 25 | **74.23%** << 92.6% (SkateFormer) - cross subject |
+| NTU/CS, concatenation-bone | 56,880 | 60 | 3D | 25 | **73.81%** << 92.6% (SkateFormer) - cross subject |

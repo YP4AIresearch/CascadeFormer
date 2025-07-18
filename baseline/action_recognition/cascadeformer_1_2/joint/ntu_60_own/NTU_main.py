@@ -197,7 +197,7 @@ def main():
     freezeT1 = False
     unfreeze_layers = None # freeze all layers
 
-    ft_lr = 1e-4 # it used to be 3e-5
+    ft_lr = 3e-5 # 3e-5 for CS, 1e-4 for CV
     wd = 1e-2
     trained_T2, train_cross_attn, train_head = finetuning(
         train_loader=train_finetuning_dataloader,

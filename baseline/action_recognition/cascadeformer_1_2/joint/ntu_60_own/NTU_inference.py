@@ -121,7 +121,7 @@ def main():
     # Set the device
 
     # transformer parameters
-    hidden_size = 768 # 768 for CS, 512 for CV
+    hidden_size = 800 # 800 for CS, 512 for CV
     n_heads = 16 # 16 for CS, 8 for CV
     num_layers = 16 # 16 for CS, 12 for CV
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
