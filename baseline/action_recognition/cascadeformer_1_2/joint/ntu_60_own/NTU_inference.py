@@ -109,7 +109,7 @@ def main():
     T2_DROPOUT = 0.2
     CROSS_ATTN_DROPOUT = 0.2
     HEAD_DROPOUT = 0.3  # used to be 0.2
-    SPLIT = "CS" # "CS" for cross subject, "CV" for cross view
+    SPLIT = "CV" # "CS" for cross subject, "CV" for cross view
 
     if SPLIT == "CS":
         DATA_PATH = "NTU60_CS.npz" # for cross subject
@@ -121,9 +121,10 @@ def main():
     # Set the device
 
     # transformer parameters
-    hidden_size = 800 # 800 for CS, 512 for CV
-    n_heads = 16 # 16 for CS, 8 for CV
-    num_layers = 16 # 16 for CS, 12 for CV
+    hidden_size = 600 # 800 for CS, 600 for CV
+    n_heads = 8 # 16 for CS, 8 for CV
+    num_layers = 12 # 16 for CS, 12 for CV
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     print("=" * 50)
