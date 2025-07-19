@@ -28,3 +28,5 @@ wget-log
 raw_data/
 statistics/
 denoised_data/
+.env
+
