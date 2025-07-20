@@ -8,6 +8,27 @@ from typing import Tuple
 
 POSITIONAL_UPPER_BOUND = 1000
 
+# this is for ablation
+class ResidualMLPHead(nn.Module):
+    def __init__(self, d_model, output_dim):
+        super(ResidualMLPHead, self).__init__()
+        self.fc1 = nn.Linear(d_model, d_model)
+        self.act = nn.ReLU()
+        self.fc2 = nn.Linear(d_model, output_dim)
+
+        # projection to output_dim for residual connection
+        self.proj_residual = nn.Linear(d_model, output_dim)
+    
+    def forward(self, x):
+        residual = self.proj_residual(x)  # project residual
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.fc2(x)
+        x = x + residual  # add projected residual
+
+        return x
+
+
 class BaseT1(nn.Module):
     """
         A simple baseline transformer model for reconstructing masked keypoints.
@@ -39,18 +60,25 @@ class BaseT1(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # reconstruction head (only used during training)
-        if three_d:
-            self.reconstruction_head = nn.Linear(d_model, num_joints * 3)
-        else:   
-            self.reconstruction_head = nn.Linear(d_model, num_joints * 2)
+        # if three_d:
+        #     self.reconstruction_head = nn.Linear(d_model, num_joints * 3)
+        # else:   
+        #     self.reconstruction_head = nn.Linear(d_model, num_joints * 2)
         
         
-        # MLP reconstruction head (optional)
+        # MLP reconstruction head (for ablation)
         # self.reconstruction_head = nn.Sequential(
         #     nn.Linear(d_model, d_model),
         #     nn.ReLU(),
         #     nn.Linear(d_model, num_joints * 2)
         # )
+
+        # residual MLP head (for ablation)
+        self.reconstruction_head = ResidualMLPHead(d_model, num_joints * 2)
+
+
+        print("🧠" * 20)
+        print("using MLP reconstruction RESIDUAL head!")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """

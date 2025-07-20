@@ -1,5 +1,9 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
+## Paper (under review at AAAI 2026 Main Technical Track)
+
+[CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition](https://drive.google.com/file/d/1ZxLJOO2IKwqbccGg5ot6OxzM-63nKR2R/view?usp=sharing)
+
 ## CascadeFormer Architecture
 
 ![alt text](docs/CascadeFormer.png)
