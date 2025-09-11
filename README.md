@@ -1,10 +1,5 @@
 # 🌊 CascadeFormer: Two-stage Cascading Transformer for Human Action Recognition
 
-## Paper (under review at AAAI 2026 Main Technical Track)
-
-- [main paper](papers/CascadeFormer__main_paper_.pdf)
-- [supplementary material](papers/CascadeFormer__supplementary_material_.pdf)
-
 ## Evaluation Results
 
 We open source the following model checkpoints on HuggingFace: [YusenPeng/CascadeFormerCheckpoints](https://huggingface.co/YusenPeng/CascadeFormerCheckpoints)
@@ -17,11 +12,20 @@ We open source the following model checkpoints on HuggingFace: [YusenPeng/Cascad
 | NTU/CV | 56,880 | 25, 3D | **88.17%** | 86.86% | 87.24% |
 
 
-## Environment Setup
+## Citation
 
-```bash
-conda env create -f environment.yml
-conda activate CascadeFormer
+Please cite our work if you find it useful/helpful:
+
+```
+@misc{peng2025cascadeformerfamilytwostagecascading,
+      title={CascadeFormer: A Family of Two-stage Cascading Transformers for Skeleton-based Human Action Recognition}, 
+      author={Yusen Peng and Alper Yilmaz},
+      year={2025},
+      eprint={2509.00692},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2509.00692}, 
+}
 ```
 
 ## Contacts
