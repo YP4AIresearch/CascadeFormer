@@ -49,3 +49,18 @@ If you have any questions or suggestions, feel free to contact:
 - Alper Yilmaz (yilmaz.15@osu.edu)
 
 Or describe it in Issues.
+
+
+## 🔥 Ongoing Work: CascadeFormer-Agent for anomaly detection
+
+### CascadeFormer-Agent
+
+![alt text](/CascadeFormer-AD-Agent.png)
+
+### Command
+
+```bash
+# export the API key first
+export OPENAI_API_KEY=<API KEY GOES HERE>
+CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/agent_demo.py
+```

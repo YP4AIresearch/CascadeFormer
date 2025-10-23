@@ -29,4 +29,12 @@ raw_data/
 statistics/
 denoised_data/
 .env
+*.pkl
+*.h5
+*.csv
+*.json
+*.mp4
+*.avi
+*.log
+*.ckpt
 
