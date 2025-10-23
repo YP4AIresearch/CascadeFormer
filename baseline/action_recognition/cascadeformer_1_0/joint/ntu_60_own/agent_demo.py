@@ -620,13 +620,18 @@ def inference_demo(
         video_path="demo_window.mp4"
     ):
     # prepare one sample json
-    _, _, window = prepare_one_sample(json_path, shuffle=True, train=False)
+    _, label_id, window = prepare_one_sample(json_path, shuffle=True, train=False)
+
+    if is_abnormal_label(label_id):
+        gt_label = "abnormal"
+    else:
+        gt_label = "normal"
 
     # visualize the skeleton window
     make_skeleton_video(window, out_path=video_path, fps=12, use_3d=True)
 
     # run the agent on this json
-    run_on_single_json(policies_store, incidents_store, knn, model, json_path)
+    run_on_single_json(policies_store, incidents_store, knn, model, json_path, gt_label)
 
 
 def train_one_sample(
@@ -1029,7 +1034,8 @@ def agent_rl_policy_optimization():
         r"knn_dist=(?P<knn_dist>[+-]?\d+(?:\.\d+)?)\s+"
         r"mahalanobis=(?P<mahalanobis>[+-]?\d+(?:\.\d+)?)\s+"
         r"top1_conf=(?P<top1_conf>[+-]?\d+(?:\.\d+)?)\s*-\s*"
-        r"\[decision\]:(?P<decision>ALERT|LOG)\s*$"
+        r"\[decision\]:(?P<decision>ALERT|LOG)"
+        r"(?:\s*\|\s*\[ground_truth\]:(?P<gt_label>\w+))?\s*$"
     )
 
     def _parse_incidents_kb_file(path: str = "incidents_db.kb") -> pd.DataFrame:
@@ -1047,49 +1053,15 @@ def agent_rl_policy_optimization():
                 "mahalanobis": float(d["mahalanobis"]),
                 "top1_conf": float(d["top1_conf"]),
                 "decision": d["decision"].upper(),
-                "gt_label": "unknown",
+                "gt_label": (d["gt_label"]).lower(),
             })
         return pd.DataFrame(rows)
 
     incidents_df = _parse_incidents_kb_file("incidents_db.kb")
-
-    # Optionally merge FAISS metadata if available
-    rows = []
-    for _, doc in getattr(incidents_store.docstore, "_dict", {}).items():
-        md = getattr(doc, "metadata", {}) or {}
-        if str(md.get("kind","")).lower() not in ("incident","incident_context"):
-            continue
-        try:
-            rows.append({
-                "entropy": float(md.get("entropy", 0.0)),
-                "knn_dist": float(md.get("knn_dist", 0.0)),
-                "mahalanobis": float(md.get("mahalanobis", 0.0)),
-                "top1_conf": float(md.get("top1_conf", md.get("top_prob", 0.0))),
-                "decision": str(md.get("decision","LOG")).upper(),
-                "gt_label": str(md.get("gt_label","unknown")).lower(),
-            })
-        except Exception:
-            pass
-    if rows:
-        df_vs = pd.DataFrame(rows)
-        incidents_df = pd.concat([incidents_df, df_vs], ignore_index=True)
-
-    # --- Basic cleanup ---
-    for c in ["entropy","knn_dist","mahalanobis","top1_conf"]:
-        incidents_df[c] = pd.to_numeric(incidents_df[c], errors="coerce")
-    incidents_df["decision"] = incidents_df["decision"].astype(str).str.upper()
-    incidents_df["gt_label"] = incidents_df["gt_label"].astype(str).str.lower()
-    mask_all_nan = incidents_df[["entropy","knn_dist","mahalanobis","top1_conf"]].isna().all(axis=1)
-    incidents_df = incidents_df.loc[~mask_all_nan].reset_index(drop=True)
-    for c in ["entropy","knn_dist","mahalanobis","top1_conf"]:
-        if incidents_df[c].isna().any():
-            incidents_df[c] = incidents_df[c].fillna(incidents_df[c].median())
-
     print(f"[incidents_df] {len(incidents_df)} rows | columns: {list(incidents_df.columns)}")
 
-    # ==================================================
-    # Run RL optimization
-    # ==================================================
+    return
+
     rl_policy_optimization(
         incidents_df,
         policies_store, incidents_store,
@@ -1290,8 +1262,8 @@ def evaluate_random_batches_with_agent(policies_store, incidents_store, knn_scor
     print("Confusion Matrix (rows=truth [Normal, Abnormal]; cols=pred [LOG, ALERT])", flush=True)
     print(cm, flush=True)
 
-def agent_training_and_demo():
-    INFERENCE_ONLY = False
+def agent_training_and_demo(inference_only: bool):
+    INFERENCE_ONLY = inference_only
     n_samples = 10
     model = CascadeFormerWrapper(device="cuda")
     
@@ -1358,7 +1330,7 @@ def agent_training_and_demo():
 if __name__ == "__main__":
 
     # mode 1: running agent training (optional) + a random inference demo
-    agent_training_and_demo()
+    agent_training_and_demo(inference_only=True)
 
 
     # mode 2: reinforcement-learning based policy optimization

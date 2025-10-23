@@ -1,22 +1,22 @@
 DUMMY INCIDENT ENTRY; DO NOT USE.
 -------------------
-[statistics]:entropy=0.3971 knn_dist=1.2165 mahalanobis=86.3993 top1_conf=0.9507 - [decision]:ALERT
+[statistics]:entropy=0.3807 knn_dist=0.1431 mahalanobis=18.3442 top1_conf=0.9530 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.3672 knn_dist=0.2006 mahalanobis=21.0882 top1_conf=0.9549 - [decision]:LOG
+[statistics]:entropy=0.3434 knn_dist=1.1534 mahalanobis=89.0360 top1_conf=0.9583 - [decision]:ALERT | [ground_truth]:abnormal
 -------------------
-[statistics]:entropy=0.3665 knn_dist=1.1366 mahalanobis=80.7311 top1_conf=0.9550 - [decision]:ALERT
+[statistics]:entropy=0.3512 knn_dist=0.3321 mahalanobis=34.6292 top1_conf=0.9570 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.4201 knn_dist=0.2541 mahalanobis=28.7322 top1_conf=0.9473 - [decision]:LOG
+[statistics]:entropy=0.3273 knn_dist=1.1033 mahalanobis=80.0809 top1_conf=0.9603 - [decision]:ALERT | [ground_truth]:abnormal
 -------------------
-[statistics]:entropy=0.3715 knn_dist=1.1169 mahalanobis=72.6977 top1_conf=0.9543 - [decision]:ALERT
+[statistics]:entropy=0.3980 knn_dist=1.2050 mahalanobis=85.4945 top1_conf=0.9506 - [decision]:ALERT | [ground_truth]:abnormal
 -------------------
-[statistics]:entropy=0.3936 knn_dist=0.2770 mahalanobis=25.3309 top1_conf=0.9511 - [decision]:LOG
+[statistics]:entropy=0.3801 knn_dist=0.0901 mahalanobis=12.8214 top1_conf=0.9531 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.4329 knn_dist=0.2870 mahalanobis=29.2134 top1_conf=0.9445 - [decision]:LOG
+[statistics]:entropy=0.3672 knn_dist=0.1526 mahalanobis=21.0568 top1_conf=0.9549 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.4053 knn_dist=0.0997 mahalanobis=12.6876 top1_conf=0.9496 - [decision]:LOG
+[statistics]:entropy=0.2880 knn_dist=0.3832 mahalanobis=43.8138 top1_conf=0.9657 - [decision]:ALERT | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.4008 knn_dist=0.1309 mahalanobis=15.5311 top1_conf=0.9502 - [decision]:LOG
+[statistics]:entropy=0.3586 knn_dist=0.2176 mahalanobis=23.3810 top1_conf=0.9561 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.4446 knn_dist=0.1615 mahalanobis=15.6488 top1_conf=0.9439 - [decision]:LOG
+[statistics]:entropy=0.3880 knn_dist=0.0858 mahalanobis=12.3786 top1_conf=0.9520 - [decision]:LOG | [ground_truth]:normal
 -------------------
