@@ -64,3 +64,31 @@ Or describe it in Issues.
 export OPENAI_API_KEY=<API KEY GOES HERE>
 CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/agent_demo.py
 ```
+
+### Logging incidents during agent training
+
+```csharp
+=== Incidents in the knowledge base ===
+DUMMY INCIDENT ENTRY; DO NOT USE.
+-------------------
+[statistics]:entropy=0.3807 knn_dist=0.1431 mahalanobis=18.3442 top1_conf=0.9530 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3434 knn_dist=1.1534 mahalanobis=89.0360 top1_conf=0.9583 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.3512 knn_dist=0.3321 mahalanobis=34.6292 top1_conf=0.9570 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3273 knn_dist=1.1033 mahalanobis=80.0809 top1_conf=0.9603 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.3980 knn_dist=1.2050 mahalanobis=85.4945 top1_conf=0.9506 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.3801 knn_dist=0.0901 mahalanobis=12.8214 top1_conf=0.9531 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3672 knn_dist=0.1526 mahalanobis=21.0568 top1_conf=0.9549 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.2880 knn_dist=0.3832 mahalanobis=43.8138 top1_conf=0.9657 - [decision]:ALERT | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3586 knn_dist=0.2176 mahalanobis=23.3810 top1_conf=0.9561 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3880 knn_dist=0.0858 mahalanobis=12.3786 top1_conf=0.9520 - [decision]:LOG | [ground_truth]:normal
+-------------------
+```
