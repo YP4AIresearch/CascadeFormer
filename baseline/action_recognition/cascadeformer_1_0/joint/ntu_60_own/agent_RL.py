@@ -14,12 +14,12 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support, con
 
 from NTU_feeder import Feeder
 from dotenv import load_dotenv
-from agent_components.constants import WINDOW_SIZE, DATA_PATH, abnormal_action_labels, ST_RE
+from agent_components.constants import WINDOW_SIZE, DATA_PATH, ST_RE
 from agent_components.perceiver import CascadeFormerWrapper
 from agent_components.statistics import DistanceScorer, score_anomaly, perceive_window
-from agent_components.rag import write_incident_db, print_incident_db, write_policy_db, print_policy_db
-from agent_components.reinforcement import PolicyParams, train_a_reward_model, random_policy_search, decide_with_rl_policy
-from agent_components.runner import is_abnormal_label, train_one_sample, inference_demo
+from agent_components.rag import print_incident_db, print_policy_db
+from agent_components.reinforcement import PolicyParams, train_a_reward_model, policy_search, decide_with_rl_policy
+from agent_components.runner import is_abnormal_label
 from agent_components.data_utils import extract_state_features, select_main_person_batch
 from agent_components.eval import decide_without_log
 
@@ -27,74 +27,6 @@ from agent_components.eval import decide_without_log
 load_dotenv(dotenv_path="/home/peng.1007/CascadeFormer/.env")
 # Access your key
 api_key = os.getenv("OPENAI_KEY")
-
-
-def agent_training_and_demo(inference_only: bool):
-    INFERENCE_ONLY = inference_only
-    n_samples = 10
-    model = CascadeFormerWrapper(device="cuda")
-    
-    # if no trained knn, create one
-    if not os.path.exists("trained_knn.pkl"):
-        knn = DistanceScorer(model=model)
-        # save KNN model for later use
-        joblib.dump(knn, "trained_knn.pkl")
-
-    # load the KNN
-    knn = joblib.load("trained_knn.pkl")
-    emb = OpenAIEmbeddings(model="text-embedding-3-small")
-
-    if not INFERENCE_ONLY:
-        # build new vector stores
-        policies_store = FAISS.from_texts(
-            texts=[
-                f"Raise an ALERT if the predicted action is within the abnormal action list "f"({', '.join(abnormal_action_labels)})."
-            ],
-            embedding=emb
-        )
-
-        incidents_store = FAISS.from_texts(
-            texts=[
-                "DUMMY INCIDENT ENTRY; DO NOT USE.",
-            ],
-            embedding=emb
-        )
-    else:
-        # load existing vector stores
-        policies_store = FAISS.load_local("vectorstores/policies", emb, allow_dangerous_deserialization=True)
-        incidents_store = FAISS.load_local("vectorstores/incidents", emb, allow_dangerous_deserialization=True)
-
-
-    if not INFERENCE_ONLY:
-        # training code
-        print(f"Start training with {n_samples} samples...", flush=True)
-        for i in range(n_samples):
-            print(f"\n=== Training iteration {i+1}/{n_samples} ===", flush=True)
-            train_one_sample(policies_store, incidents_store, model, knn, json_path="demo_window.json")
-
-        os.makedirs("vectorstores", exist_ok=True)
-        policies_store.save_local("vectorstores/policies")
-        incidents_store.save_local("vectorstores/incidents")
-
-        # write the knowledge base to text files
-        # NOTE: IMPORTANT - only write when training, not during inference
-        write_incident_db(incidents_store)
-        write_policy_db(policies_store)
-
-
-    # print both policies and incidents
-    print_incident_db(incidents_store)
-    print_policy_db(policies_store)
-
-    print("\n\nStart an inference demo...", flush=True)
-    DEMO_VIDEO_PATH = "demo_window.mp4"
-    DEMO_JSON_PATH = "demo_window.json"
-    policies_store = FAISS.load_local("vectorstores/policies", emb, allow_dangerous_deserialization=True)
-    incidents_store = FAISS.load_local("vectorstores/incidents", emb, allow_dangerous_deserialization=True)
-
-    inference_demo(policies_store, incidents_store, model, knn, json_path=DEMO_JSON_PATH, video_path=DEMO_VIDEO_PATH)
-
-
 
 
 def process_window_RL(
@@ -235,10 +167,11 @@ def rl_policy_optimization(incidents_df: pd.DataFrame,
     r_model = train_a_reward_model(incidents_df)
 
     # 2) Search best policy params under learned R(s,a) reward model
-    best_params = random_policy_search(r_model, incidents_df, rng=42)
+    best_params, best_reward = policy_search(r_model, incidents_df)
     print("\n=== RL-based Policy Optimization Result ===", flush=True)
     print("[RL] Best params:", best_params)
-    print("\n===========================================", flush=True)
+    print("[RL] Highest reward:", best_reward)
+    print("===========================================", flush=True)
 
     return
 

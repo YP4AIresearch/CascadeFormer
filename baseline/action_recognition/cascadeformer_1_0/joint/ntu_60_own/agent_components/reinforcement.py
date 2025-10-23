@@ -86,13 +86,7 @@ def quantile_grid(values, qs):
     qs = np.clip(np.asarray(qs), 0, 1)
     return np.quantile(values, qs)
 
-def random_policy_search(r_model, incidents_df: pd.DataFrame, rng: int = 0) -> PolicyParams:
-    """
-    Simple hybrid search:
-      - draws sensible ranges from feature quantiles
-      - random samples + a few structured grid values
-    """
-    rs = np.random.RandomState(rng)
+def policy_search(r_model, incidents_df: pd.DataFrame) -> PolicyParams:
     X = incidents_df[["entropy", "knn_dist", "mahalanobis", "top1_conf"]].values
     ent, knn, maha, conf = X[:,0], X[:,1], X[:,2], X[:,3]
     lowconf = 1 - conf
@@ -104,23 +98,21 @@ def random_policy_search(r_model, incidents_df: pd.DataFrame, rng: int = 0) -> P
 
     best, best_ret = None, -1e9
    
-    # random search
+    # search space
     candidates = [(e, k, m, lc) for e in ent_q for k in knn_q for m in maha_q for lc in lc_q]  # 625
-    rs.shuffle(candidates)
-
     # grid search for the best policy parameters
     for (e,k,m,lc) in tqdm(candidates, desc="Searching policies"):
         p = PolicyParams(
-            max_entropy=float(e),
-            min_knn=float(k),
-            min_maha=float(m),
-            min_low_conf=float(lc)
+            max_entropy=round(float(e), 4),
+            min_knn=round(float(k), 4),
+            min_maha=round(float(m), 4),
+            min_low_conf=round(float(lc), 4)
         )
         ret = expected_return_of_policy(r_model, incidents_df, p)
         if ret > best_ret:
             best, best_ret = p, ret
 
-    return best
+    return best, best_ret
 
 def decide_with_rl_policy(state_features: np.ndarray, learned_params: PolicyParams) -> Dict[str, Any]:
     """

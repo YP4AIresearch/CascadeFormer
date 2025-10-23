@@ -51,18 +51,21 @@ If you have any questions or suggestions, feel free to contact:
 Or describe it in Issues.
 
 
-## 🔥 Ongoing Work: CascadeFormer-Agent for anomaly detection
+## 🔥 Ongoing follow-up Work: CascadeFormer-Agent for anomaly detection
 
 ### CascadeFormer-Agent
 
 ![alt text](/CascadeFormer-AD-Agent.png)
 
-### Command
+### Commands
 
 ```bash
 # export the API key first
 export OPENAI_API_KEY=<API KEY GOES HERE>
+# log incidents with statistics (optional) + inference demo
 CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/agent_demo.py
+# reinforcement-learning
+CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/agent_RL.py
 ```
 
 ### Logging incidents during agent training
@@ -91,4 +94,13 @@ DUMMY INCIDENT ENTRY; DO NOT USE.
 -------------------
 [statistics]:entropy=0.3880 knn_dist=0.0858 mahalanobis=12.3786 top1_conf=0.9520 - [decision]:LOG | [ground_truth]:normal
 -------------------
+```
+
+### RL-assisted grid search for policy thresholds
+
+```csharp
+=== RL-based Policy Optimization Result ===
+[RL] Best params: PolicyParams(max_entropy=0.389, min_knn=0.5992, min_maha=54.6939, min_low_conf=0.0481)
+[RL] Highest reward: 1.154
+===========================================
 ```
