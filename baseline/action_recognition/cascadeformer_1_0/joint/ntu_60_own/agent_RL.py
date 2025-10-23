@@ -5,12 +5,12 @@ from typing import List, Dict, Any
 import joblib
 import pandas as pd
 import matplotlib
-from tqdm import tqdm
+import random
 from pathlib import Path
 matplotlib.use("Agg")
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 from NTU_feeder import Feeder
 from dotenv import load_dotenv
@@ -21,7 +21,6 @@ from agent_components.rag import print_incident_db, print_policy_db
 from agent_components.reinforcement import PolicyParams, train_a_reward_model, policy_search, decide_with_rl_policy
 from agent_components.runner import is_abnormal_label
 from agent_components.data_utils import extract_state_features, select_main_person_batch
-from agent_components.eval import decide_without_log
 
 # Load environment variables from .env file
 load_dotenv(dotenv_path="/home/peng.1007/CascadeFormer/.env")
@@ -46,26 +45,12 @@ def process_window_RL(
     # 2) Score anomaly (must provide knn_dist / mahalanobis / top1_conf)
     scores = score_anomaly.invoke({"knn": knn, "event": event})
 
-    # KB decision
-    kb_action = decide_without_log(policies_store, incidents_store, event, scores)["action"].upper()
-
     # RL decision
     s = extract_state_features(event, scores)
     rl_action = decide_with_rl_policy(s, learned_params)["action"].upper()
 
-    # resolve the final action: who overrides whom?
-    if kb_action == rl_action:
-        action = kb_action
-        rationale = f"KB and RL agree: {action}."
-    else:
-        if prefer_kb:
-            action = kb_action
-            rationale = f"Disagreement: KB={kb_action}, RL={rl_action}. KB preferred, so {action}."
-        else:
-            action = rl_action
-            rationale = f"Disagreement: KB={kb_action}, RL={rl_action}. RL preferred, so {action}."
-
-    decision = {"action": action, "rationale": rationale}
+    action = rl_action
+    decision = {"action": action, "rationale": ""}
     return {"event": event, "scores": scores, "decision": decision}
 
 
@@ -75,8 +60,8 @@ def evaluate_random_batches_with_rl_policy(
     knn_scorer,
     model: CascadeFormerWrapper,
     learned_params: PolicyParams,
-    num_batches: int = 10, # now 10 random batches by default
-    batch_size: int = 16,
+    num_batches,
+    batch_size,
     device: str = "cuda"
 ):
     """
@@ -101,9 +86,10 @@ def evaluate_random_batches_with_rl_policy(
     total_batches = len(loader)
 
     # --- 2. Randomly choose a subset of batches ---
-    import random
+    seed = 42
+    random.seed(seed)
     selected_batches = sorted(random.sample(range(total_batches), min(num_batches, total_batches)))
-    print(f"[Info] Evaluating {len(selected_batches)} random batches out of {total_batches} total.", flush=True)
+    print(f"[INFO] Evaluating {len(selected_batches)} random batches out of {total_batches} total.", flush=True)
 
     # --- 3. Metric containers ---
     y_true, y_pred = [], []
@@ -116,7 +102,7 @@ def evaluate_random_batches_with_rl_policy(
 
     # --- 5. Evaluation loop ---
     with torch.inference_mode():
-        for b_idx, (skeletons, labels, _) in tqdm(enumerate(loader)):
+        for b_idx, (skeletons, labels, _) in enumerate(loader):
             if b_idx not in selected_batches:
                 continue  # skip non-selected batches
 
@@ -137,6 +123,11 @@ def evaluate_random_batches_with_rl_policy(
 
                 pred_alert = 1 if str(result["decision"]["action"]).upper() == "ALERT" else 0
                 true_abn = 1 if is_abnormal_label(int(labels_np[i])) else 0
+                
+                # print("===========", flush=True)
+                # print(f"instance # {b_idx * batch_size + i}:", flush=True)
+                # print(f"action: {result['decision']['action']}", flush=True)
+                # print("-----------", flush=True)
 
                 y_pred.append(pred_alert)
                 y_true.append(true_abn)
@@ -146,8 +137,6 @@ def evaluate_random_batches_with_rl_policy(
     prec, rec, f1, _ = precision_recall_fscore_support(
         y_true, y_pred, average="binary", zero_division=0
     )
-    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
-
     # --- 7. Print results ---
     print("\n=== Offline Evaluation (RL Policy over RANDOM TEST Batches) ===", flush=True)
     print(f"Samples   : {len(y_true)}", flush=True)
@@ -155,8 +144,6 @@ def evaluate_random_batches_with_rl_policy(
     print(f"Precision : {prec:.4f}", flush=True)
     print(f"Recall    : {rec:.4f}", flush=True)
     print(f"F1-score  : {f1:.4f}", flush=True)
-    print("Confusion Matrix (rows=truth [Normal, Abnormal]; cols=pred [LOG, ALERT])", flush=True)
-    print(cm, flush=True)
 
 
 def rl_policy_optimization(incidents_df: pd.DataFrame,
@@ -173,12 +160,13 @@ def rl_policy_optimization(incidents_df: pd.DataFrame,
     print("[RL] Highest reward:", best_reward)
     print("===========================================", flush=True)
 
-    return
-
     # 3) Evaluate on held-out TEST split using learned policy
     evaluate_random_batches_with_rl_policy(
         policies_store, incidents_store, knn_scorer, model,
-        learned_params=best_params, batch_size=16, device=device
+        learned_params=best_params, 
+        num_batches=200,
+        batch_size=1,
+        device=device
     )
 
     # FIXME: (Optional) Persist best policy into your policies_store as a structured rule

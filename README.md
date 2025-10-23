@@ -104,3 +104,14 @@ DUMMY INCIDENT ENTRY; DO NOT USE.
 [RL] Highest reward: 1.154
 ===========================================
 ```
+
+### test-set evaluation (preliminary)
+
+```csharp
+=== Offline Evaluation (RL Policy over RANDOM TEST Batches) ===
+Samples   : 200
+Accuracy  : 0.4900
+Precision : 0.3108
+Recall    : 1.0000
+F1-score  : 0.4742
+```
