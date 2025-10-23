@@ -37,4 +37,5 @@ denoised_data/
 *.avi
 *.log
 *.ckpt
-
+vectorstores/
+vids/
