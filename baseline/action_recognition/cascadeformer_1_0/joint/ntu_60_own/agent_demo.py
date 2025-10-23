@@ -13,6 +13,8 @@ from sklearn.ensemble import RandomForestRegressor
 import re
 import matplotlib
 from tqdm import tqdm
+from pathlib import Path
+from dataclasses import dataclass
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -411,27 +413,22 @@ POLICY_PROMPT = ChatPromptTemplate.from_messages([
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 policy_chain = POLICY_PROMPT | llm | StrOutputParser()
 
-def decide(policies_store, incidents_store, event: Dict[str, Any], scores: Dict[str, Any]) -> Dict[str, Any]:
+def decide(policies_store, incidents_store, event: Dict[str, Any], scores: Dict[str, Any], gt_label: str) -> Dict[str, Any]:
     """
     make a decision based on the event, scores, and context.
     """
     ctx, q = retrieve_context(policies_store, incidents_store, event, scores)
     out = policy_chain.invoke({"event": event, "scores": scores, "context": ctx})
+    # Remove Markdown code fences (```json ... ``` or ``` ... ```)
+    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", out.strip(), flags=re.MULTILINE)
 
-    try:
-        # Remove Markdown code fences (```json ... ``` or ``` ... ```)
-        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", out.strip(), flags=re.MULTILINE)
-
-        decision = json.loads(cleaned)
-        # insert the context into the knowledge base
-        incident = f"[statistics]:{q} - [decision]:{decision['action']}"
-        incidents_store.add_texts([incident], metadatas=[{"kind": "incident_context"}])
-    except Exception as e:
-        print(f"⚠️ parse error: {e}")
-        decision = {"action": "LOG", "rationale": "fallback"}
+    decision = json.loads(cleaned)
+    # insert the context into the knowledge base
+    incident = f"[statistics]:{q} - [decision]:{decision['action']} | [ground_truth]:{gt_label}"
+    incidents_store.add_texts([incident], metadatas=[{"kind": "incident_context"}])
     return decision
 
-def process_window(policies_store, incidents_store, knn: DistanceScorer, model: CascadeFormerWrapper, skel_window: List[List[List[float]]]) -> Dict[str, Any]:
+def process_window(policies_store, incidents_store, knn: DistanceScorer, model: CascadeFormerWrapper, skel_window: List[List[List[float]]], gt_label: str) -> Dict[str, Any]:
     # 1) Perceive
     event = perceive_window.invoke({"model": model, "skel_window": skel_window})
 
@@ -439,7 +436,7 @@ def process_window(policies_store, incidents_store, knn: DistanceScorer, model: 
     scores = score_anomaly.invoke({"knn": knn, "event": event})
 
     # 3) Decide (your normal function)
-    decision = decide(policies_store, incidents_store, event, scores)
+    decision = decide(policies_store, incidents_store, event, scores, gt_label)
 
     # 4) Act/log via tools
     if decision["action"] == "ALERT":
@@ -599,7 +596,7 @@ def make_skeleton_video(
         plt.close(fig)
 
 
-def run_on_single_json(policies_store, incidents_store, knn: DistanceScorer, model: CascadeFormerWrapper, json_path: str):
+def run_on_single_json(policies_store, incidents_store, knn: DistanceScorer, model: CascadeFormerWrapper, json_path: str, gt_label: str):
     """
     Load one skeleton window from a JSON file and run the agent once.
     JSON format: nested list shaped like (T, J, C).
@@ -607,7 +604,7 @@ def run_on_single_json(policies_store, incidents_store, knn: DistanceScorer, mod
     with open(json_path, "r") as f:
         skel_window = json.load(f)
 
-    out = process_window(policies_store, incidents_store, knn, model, skel_window)
+    out = process_window(policies_store, incidents_store, knn, model, skel_window, gt_label)
 
     print("=== 🔥Demo Run🔥 ===", flush=True)
     print("🔥Decision:", json.dumps(out["decision"]["action"], indent=2), flush=True)
@@ -640,10 +637,15 @@ def train_one_sample(
         json_path="demo_window.json"
     ):
     # prepare one sample json
-    prepare_one_sample(json_path, shuffle=True, train=True)
+    _, label_id, _ = prepare_one_sample(json_path, shuffle=True, train=True)
+
+    if is_abnormal_label(label_id):
+        gt_label = "abnormal"
+    else:
+        gt_label = "normal"
 
     # run the agent on this json
-    run_on_single_json(policies_store, incidents_store, knn, model, json_path)
+    run_on_single_json(policies_store, incidents_store, knn, model, json_path, gt_label)
 
 
 def print_incident_db(incidents_store):
@@ -690,41 +692,411 @@ def compute_reward(gt_label, decision):
         return WEIGHTS["tn"]
 
 
-def train_a_reward_model(incidents_df: pd.DataFrame):
+def train_a_reward_model(incidents_df: pd.DataFrame) -> RandomForestRegressor:
     """
-        train a reward model R(s,a) to predict reward based on state features and action.
+    Train R(s,a) using your hand-crafted rewards as targets.
+    Returns the fitted RandomForestRegressor.
     """
+    # state features
     X = incidents_df[["entropy", "knn_dist", "mahalanobis", "top1_conf"]].values
-    A = (incidents_df["decision"] == "ALERT").astype(int).values.reshape(-1, 1)
+    # action as 0/1
+    A = (incidents_df["decision"].astype(str).str.upper() == "ALERT").astype(int).values.reshape(-1, 1)
 
+    # label: numeric reward
+    incidents_df = incidents_df.copy()
     incidents_df["reward"] = incidents_df.apply(
-        lambda r: compute_reward(r.gt_label, r.decision), axis=1
+        lambda r: compute_reward(str(r.gt_label), str(r.decision)), axis=1
     )
-
     R = incidents_df["reward"].values
 
+    # X_aug = [state, action]
     X_aug = np.concatenate([X, A], axis=1)
-    r_model = RandomForestRegressor(max_depth=4, n_estimators=200)
+    r_model = RandomForestRegressor(max_depth=4, n_estimators=200, random_state=0)
     r_model.fit(X_aug, R)
+    return r_model
 
+@dataclass
+class PolicyParams:
+    # hard threshold rule
+    max_entropy: float
+    min_knn: float
+    min_maha: float
+    min_low_conf: float  # triggers when (1 - top1_conf) >= min_low_conf
+    # optional linear score gate
+    use_linear: bool = True
+    w_entropy: float = 0.0
+    w_knn: float = 1.0
+    w_maha: float = 0.5
+    w_lowconf: float = 0.5
+    score_threshold: float = 0.8
 
-def reward_model_predict(r_model: RandomForestRegressor, state_features: np.ndarray, action: str) -> float:
+def policy_decide(state, p: PolicyParams) -> str:
     """
-        predict reward using the trained reward model R(s,a).
+    state: np.ndarray shape (4,) in order [entropy, knn_dist, mahalanobis, top1_conf]
+    returns 'ALERT' or 'LOG'
     """
-    a_val = 1 if action == "ALERT" else 0
-    x_aug = np.concatenate([state_features, np.array([[a_val]])], axis=1)
-    reward = r_model.predict(x_aug)
-    return float(reward[0])
+    ent, knn, maha, top1 = state
+    lowconf = 1.0 - top1
 
+    # Rule 1: any hard red-flag?
+    if (ent >= p.max_entropy) or (knn >= p.min_knn) or (maha >= p.min_maha) or (lowconf >= p.min_low_conf):
+        return "ALERT"
+
+    # Rule 2: linear score gate (optional)
+    if p.use_linear:
+        score = (p.w_entropy*ent + p.w_knn*knn + p.w_maha*maha + p.w_lowconf*lowconf)
+        if score >= p.score_threshold:
+            return "ALERT"
+    
+    return "LOG"
+
+
+def expected_return_of_policy(r_model: RandomForestRegressor, incidents_df: pd.DataFrame, p: PolicyParams) -> float:
+    """
+    Uses the learned R(s,a) to compute mean reward for policy p over a static set of states.
+    """
+    X = incidents_df[["entropy", "knn_dist", "mahalanobis", "top1_conf"]].values
+    actions = []
+    for s in X:
+        a = policy_decide(s, p)
+        actions.append(1 if a == "ALERT" else 0)
+    A = np.array(actions, dtype=np.int32).reshape(-1, 1)
+    X_aug = np.concatenate([X, A], axis=1)
+    rewards = r_model.predict(X_aug)
+    return float(np.mean(rewards))
+
+def quantile_grid(values, qs):
+    """
+    compute quantiles of values at quantile levels qs.
+    """
+    qs = np.clip(np.asarray(qs), 0, 1)
+    return np.quantile(values, qs)
+
+
+def random_policy_search(r_model, incidents_df: pd.DataFrame, n_trials: int = 200, rng: int = 0) -> PolicyParams:
+    """
+    Simple hybrid search:
+      - draws sensible ranges from feature quantiles
+      - random samples + a few structured grid values
+    """
+    rs = np.random.RandomState(rng)
+    X = incidents_df[["entropy", "knn_dist", "mahalanobis", "top1_conf"]].values
+    ent, knn, maha, conf = X[:,0], X[:,1], X[:,2], X[:,3]
+    lowconf = 1 - conf
+
+    ent_q  = quantile_grid(ent,  [0.5, 0.7, 0.8, 0.9, 0.95])
+    knn_q  = quantile_grid(knn,  [0.5, 0.7, 0.8, 0.9, 0.95])
+    maha_q = quantile_grid(maha, [0.5, 0.7, 0.8, 0.9, 0.95])
+    lc_q   = quantile_grid(lowconf, [0.5, 0.7, 0.8, 0.9, 0.95])
+
+    best, best_ret = None, -1e9
+   
+    # random search before grid search
+    grid = [(e, k, m, lc) for e in ent_q for k in knn_q for m in maha_q for lc in lc_q]
+    rs.shuffle(grid)
+    candidates = grid[: max(50, n_trials // 4)]
+    for _ in range(n_trials - len(candidates)):
+        e = rs.uniform(ent_q[0], ent_q[-1])
+        k = rs.uniform(knn_q[0], knn_q[-1])
+        m = rs.uniform(maha_q[0], maha_q[-1])
+        lc = rs.uniform(lc_q[0],  lc_q[-1])
+        candidates.append((e,k,m,lc))
+
+    # grid search for the best policy parameters
+    for (e,k,m,lc) in candidates:
+        p = PolicyParams(
+            max_entropy=float(e),
+            min_knn=float(k),
+            min_maha=float(m),
+            min_low_conf=float(lc),
+            use_linear=True,
+            w_entropy=rs.uniform(0.0, 1.0),
+            w_knn=rs.uniform(0.0, 1.0),
+            w_maha=rs.uniform(0.0, 1.0),
+            w_lowconf=rs.uniform(0.0, 1.0),
+            score_threshold=rs.uniform(0.1, 2.0)
+        )
+        ret = expected_return_of_policy(r_model, incidents_df, p)
+        if ret > best_ret:
+            best, best_ret = p, ret
+
+    return best
+
+
+def decide_with_rl_policy(state_features: np.ndarray, learned_params: PolicyParams) -> Dict[str, Any]:
+    """
+    Deterministic decision using the learned policy parameters.
+    """
+    action = policy_decide(state_features, learned_params)
+    return {
+        "action": action,
+        "rationale": f"RL policy thresholds {learned_params}"
+    }
+
+def extract_state_features(event: Dict[str,Any], scores: Dict[str,Any]) -> np.ndarray:
+    """
+    Aligns with training features: [entropy, knn_dist, mahalanobis, top1_conf]
+    """
+    ent = float(event["entropy"])
+    knn = float(scores["knn_dist"])
+    maha = float(scores["mahalanobis"])
+    top1 = float(scores["top1_conf"])
+    return np.array([ent, knn, maha, top1], dtype=float)
+
+
+def process_window_RL(
+    policies_store, incidents_store,
+    knn: DistanceScorer, model: CascadeFormerWrapper,
+    skel_window: List[List[List[float]]],
+    learned_params: PolicyParams,
+    prefer_kb: bool = False,   # ✅ True = favor KB when KB and RL disagree
+) -> Dict[str, Any]:
+    """
+    Hybrid inference that combines KB-based decision and RL-based decision.
+    If prefer_kb=True, KB decision takes precedence on disagreement (especially for ALERT cases).
+    """
+    # 1) Perceive
+    event = perceive_window.invoke({"model": model, "skel_window": skel_window})
+
+    # 2) Score anomaly (must provide knn_dist / mahalanobis / top1_conf)
+    scores = score_anomaly.invoke({"knn": knn, "event": event})
+
+    # KB decision
+    kb_action = decide_without_log(policies_store, incidents_store, event, scores)["action"].upper()
+
+    # RL decision
+    s = extract_state_features(event, scores)
+    rl_action = decide_with_rl_policy(s, learned_params)["action"].upper()
+
+    # resolve the final action: who overrides whom?
+    if kb_action == rl_action:
+        action = kb_action
+        rationale = f"KB and RL agree: {action}."
+    else:
+        if prefer_kb:
+            action = kb_action
+            rationale = f"Disagreement: KB={kb_action}, RL={rl_action}. KB preferred, so {action}."
+        else:
+            action = rl_action
+            rationale = f"Disagreement: KB={kb_action}, RL={rl_action}. RL preferred, so {action}."
+
+    decision = {"action": action, "rationale": rationale}
+    return {"event": event, "scores": scores, "decision": decision}
+
+
+def evaluate_random_batches_with_rl_policy(
+    policies_store,
+    incidents_store,
+    knn_scorer,
+    model: CascadeFormerWrapper,
+    learned_params: PolicyParams,
+    num_batches: int = 10, # now 10 random batches by default
+    batch_size: int = 16,
+    device: str = "cuda"
+):
+    """
+    Randomly samples `num_batches` batches from the test split.
+    Runs the RL policy on each sample and computes classification metrics.
+    """
+    test_dataset = Feeder(
+        data_path=DATA_PATH,
+        split="test",
+        debug=False,
+        random_choose=False,
+        random_shift=False,
+        random_move=False,
+        window_size=WINDOW_SIZE,
+        normalization=False,
+        random_rot=False,
+        p_interval=[0.5, 1],
+        vel=False,
+        bone=False,
+    )
+    loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    total_batches = len(loader)
+
+    # --- 2. Randomly choose a subset of batches ---
+    import random
+    selected_batches = sorted(random.sample(range(total_batches), min(num_batches, total_batches)))
+    print(f"[Info] Evaluating {len(selected_batches)} random batches out of {total_batches} total.", flush=True)
+
+    # --- 3. Metric containers ---
+    y_true, y_pred = [], []
+
+    # --- 4. Set model to eval mode ---
+    model.t1.eval()
+    model.t2.eval()
+    model.cross_attn.eval()
+    model.gait_head.eval()
+
+    # --- 5. Evaluation loop ---
+    with torch.inference_mode():
+        for b_idx, (skeletons, labels, _) in tqdm(enumerate(loader)):
+            if b_idx not in selected_batches:
+                continue  # skip non-selected batches
+
+            skeletons = skeletons.to(device)
+            labels_np = labels.cpu().numpy().astype(int)
+            windows = _select_main_person_batch(skeletons)
+
+            for i in range(windows.shape[0]):
+                window_np = windows[i].cpu().numpy().astype(float)
+                result = process_window_RL(
+                    policies_store,
+                    incidents_store,
+                    knn=knn_scorer,
+                    model=model,
+                    skel_window=window_np.tolist(),
+                    learned_params=learned_params,
+                )
+
+                pred_alert = 1 if str(result["decision"]["action"]).upper() == "ALERT" else 0
+                true_abn = 1 if is_abnormal_label(int(labels_np[i])) else 0
+
+                y_pred.append(pred_alert)
+                y_true.append(true_abn)
+
+    # --- 6. Compute metrics ---
+    acc = accuracy_score(y_true, y_pred)
+    prec, rec, f1, _ = precision_recall_fscore_support(
+        y_true, y_pred, average="binary", zero_division=0
+    )
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+
+    # --- 7. Print results ---
+    print("\n=== Offline Evaluation (RL Policy over RANDOM TEST Batches) ===", flush=True)
+    print(f"Samples   : {len(y_true)}", flush=True)
+    print(f"Accuracy  : {acc:.4f}", flush=True)
+    print(f"Precision : {prec:.4f}", flush=True)
+    print(f"Recall    : {rec:.4f}", flush=True)
+    print(f"F1-score  : {f1:.4f}", flush=True)
+    print("Confusion Matrix (rows=truth [Normal, Abnormal]; cols=pred [LOG, ALERT])", flush=True)
+    print(cm, flush=True)
+
+
+def rl_policy_optimization(incidents_df: pd.DataFrame,
+                                policies_store, incidents_store,
+                                knn_scorer, model: CascadeFormerWrapper,
+                                device: str = "cuda"):
+    # 1) Train reward model from past incidents
+    r_model = train_a_reward_model(incidents_df)
+
+    # 2) Search best policy params under learned R(s,a)
+    best_params = random_policy_search(r_model, incidents_df, n_trials=300, rng=42)
+    print("\n=== RL-based Policy Optimization Result ===", flush=True)
+    print("[RL] Best params:", best_params)
+    print("\n===========================================", flush=True)
+
+    # 3) Evaluate on held-out TEST split using learned policy
+    evaluate_random_batches_with_rl_policy(
+        policies_store, incidents_store, knn_scorer, model,
+        learned_params=best_params, batch_size=16, device=device
+    )
+
+    # FIXME: (Optional) Persist best policy into your policies_store as a structured rule
+    # so the production agent can cite it:
+    # add_policy_to_store(policies_store, best_params)  # implement if you want provenance
 
 
 def agent_rl_policy_optimization():
     """
-    Placeholder for RL-based policy optimization logic.
-    This function would implement the RL training loop to optimize the policy agent.
+    RL-based policy optimization entrypoint.
+    Builds incidents_df from KB, trains reward model, searches best policy.
     """
-    pass
+    model = CascadeFormerWrapper(device="cuda")
+    
+    # ---- Load or build KNN scorer ----
+    if not os.path.exists("trained_knn.pkl"):
+        knn = DistanceScorer(model=model)
+        joblib.dump(knn, "trained_knn.pkl")
+    knn = joblib.load("trained_knn.pkl")
+
+    # ---- Load vector stores ----
+    emb = OpenAIEmbeddings(model="text-embedding-3-small")
+    policies_store  = FAISS.load_local("vectorstores/policies",  emb, allow_dangerous_deserialization=True)
+    incidents_store = FAISS.load_local("vectorstores/incidents", emb, allow_dangerous_deserialization=True)
+
+    print_incident_db(incidents_store)
+    print_policy_db(policies_store)
+
+    # ==================================================
+    # Build incidents_df directly (no caching)
+    # ==================================================
+
+    _ST_RE = re.compile(
+        r"\[statistics\]:\s*"
+        r"entropy=(?P<entropy>[+-]?\d+(?:\.\d+)?)\s+"
+        r"knn_dist=(?P<knn_dist>[+-]?\d+(?:\.\d+)?)\s+"
+        r"mahalanobis=(?P<mahalanobis>[+-]?\d+(?:\.\d+)?)\s+"
+        r"top1_conf=(?P<top1_conf>[+-]?\d+(?:\.\d+)?)\s*-\s*"
+        r"\[decision\]:(?P<decision>ALERT|LOG)\s*$"
+    )
+
+    def _parse_incidents_kb_file(path: str = "incidents_db.kb") -> pd.DataFrame:
+        p = Path(path)
+        rows = []
+        for line in p.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if not s or s.startswith("DUMMY") or set(s) == {"-"}:
+                continue
+            m = _ST_RE.search(s)
+            d = m.groupdict()
+            rows.append({
+                "entropy": float(d["entropy"]),
+                "knn_dist": float(d["knn_dist"]),
+                "mahalanobis": float(d["mahalanobis"]),
+                "top1_conf": float(d["top1_conf"]),
+                "decision": d["decision"].upper(),
+                "gt_label": "unknown",
+            })
+        return pd.DataFrame(rows)
+
+    incidents_df = _parse_incidents_kb_file("incidents_db.kb")
+
+    # Optionally merge FAISS metadata if available
+    rows = []
+    for _, doc in getattr(incidents_store.docstore, "_dict", {}).items():
+        md = getattr(doc, "metadata", {}) or {}
+        if str(md.get("kind","")).lower() not in ("incident","incident_context"):
+            continue
+        try:
+            rows.append({
+                "entropy": float(md.get("entropy", 0.0)),
+                "knn_dist": float(md.get("knn_dist", 0.0)),
+                "mahalanobis": float(md.get("mahalanobis", 0.0)),
+                "top1_conf": float(md.get("top1_conf", md.get("top_prob", 0.0))),
+                "decision": str(md.get("decision","LOG")).upper(),
+                "gt_label": str(md.get("gt_label","unknown")).lower(),
+            })
+        except Exception:
+            pass
+    if rows:
+        df_vs = pd.DataFrame(rows)
+        incidents_df = pd.concat([incidents_df, df_vs], ignore_index=True)
+
+    # --- Basic cleanup ---
+    for c in ["entropy","knn_dist","mahalanobis","top1_conf"]:
+        incidents_df[c] = pd.to_numeric(incidents_df[c], errors="coerce")
+    incidents_df["decision"] = incidents_df["decision"].astype(str).str.upper()
+    incidents_df["gt_label"] = incidents_df["gt_label"].astype(str).str.lower()
+    mask_all_nan = incidents_df[["entropy","knn_dist","mahalanobis","top1_conf"]].isna().all(axis=1)
+    incidents_df = incidents_df.loc[~mask_all_nan].reset_index(drop=True)
+    for c in ["entropy","knn_dist","mahalanobis","top1_conf"]:
+        if incidents_df[c].isna().any():
+            incidents_df[c] = incidents_df[c].fillna(incidents_df[c].median())
+
+    print(f"[incidents_df] {len(incidents_df)} rows | columns: {list(incidents_df.columns)}")
+
+    # ==================================================
+    # Run RL optimization
+    # ==================================================
+    rl_policy_optimization(
+        incidents_df,
+        policies_store, incidents_store,
+        knn, model,
+        device="cuda"
+    )
+
 
 
 ##########################################################################################
@@ -919,7 +1291,7 @@ def evaluate_random_batches_with_agent(policies_store, incidents_store, knn_scor
     print(cm, flush=True)
 
 def agent_training_and_demo():
-    INFERENCE_ONLY = True
+    INFERENCE_ONLY = False
     n_samples = 10
     model = CascadeFormerWrapper(device="cuda")
     
