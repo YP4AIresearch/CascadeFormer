@@ -68,41 +68,16 @@ CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/casca
 CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/agent_RL.py
 ```
 
-### Logging incidents during agent training
-
-```csharp
-=== Incidents in the knowledge base ===
-DUMMY INCIDENT ENTRY; DO NOT USE.
--------------------
-[statistics]:entropy=0.3807 knn_dist=0.1431 mahalanobis=18.3442 top1_conf=0.9530 - [decision]:LOG | [ground_truth]:normal
--------------------
-[statistics]:entropy=0.3434 knn_dist=1.1534 mahalanobis=89.0360 top1_conf=0.9583 - [decision]:ALERT | [ground_truth]:abnormal
--------------------
-[statistics]:entropy=0.3512 knn_dist=0.3321 mahalanobis=34.6292 top1_conf=0.9570 - [decision]:LOG | [ground_truth]:normal
--------------------
-[statistics]:entropy=0.3273 knn_dist=1.1033 mahalanobis=80.0809 top1_conf=0.9603 - [decision]:ALERT | [ground_truth]:abnormal
--------------------
-[statistics]:entropy=0.3980 knn_dist=1.2050 mahalanobis=85.4945 top1_conf=0.9506 - [decision]:ALERT | [ground_truth]:abnormal
--------------------
-[statistics]:entropy=0.3801 knn_dist=0.0901 mahalanobis=12.8214 top1_conf=0.9531 - [decision]:LOG | [ground_truth]:normal
--------------------
-[statistics]:entropy=0.3672 knn_dist=0.1526 mahalanobis=21.0568 top1_conf=0.9549 - [decision]:LOG | [ground_truth]:normal
--------------------
-[statistics]:entropy=0.2880 knn_dist=0.3832 mahalanobis=43.8138 top1_conf=0.9657 - [decision]:ALERT | [ground_truth]:normal
--------------------
-[statistics]:entropy=0.3586 knn_dist=0.2176 mahalanobis=23.3810 top1_conf=0.9561 - [decision]:LOG | [ground_truth]:normal
--------------------
-[statistics]:entropy=0.3880 knn_dist=0.0858 mahalanobis=12.3786 top1_conf=0.9520 - [decision]:LOG | [ground_truth]:normal
--------------------
-```
-
 ### RL-assisted grid search for policy thresholds
 
 ```csharp
-=== RL-based Policy Optimization Result ===
-[RL] Best params: PolicyParams(max_entropy=0.389, min_knn=0.5992, min_maha=54.6939, min_low_conf=0.0481)
-[RL] Highest reward: 1.154
-===========================================
+=== Policies in the knowledge base ===
+Raise an ALERT if any of the following conditions are met:
+- entropy >= 0.3821
+- knn_dist >= 0.1486
+- mahalanobis >= 17.4800
+- (1 - top1_conf) >= 0.0471
+Otherwise, LOG the event as normal.
 ```
 
 ### test-set evaluation (preliminary)

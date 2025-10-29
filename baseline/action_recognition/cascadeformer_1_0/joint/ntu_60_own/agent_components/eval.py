@@ -137,6 +137,8 @@ def evaluate_random_batches_with_agent(policies_store, incidents_store, knn_scor
     
     # --- randomly select `num_batches` distinct indices ---
     import random
+    seed = 42
+    random.seed(seed)
     selected_batches = sorted(random.sample(range(total_batches), min(num_batches, total_batches)))
     print(f"[Info] Evaluating {len(selected_batches)} random batches out of {total_batches} total.")
 
