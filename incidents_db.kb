@@ -1,22 +1,52 @@
 DUMMY INCIDENT ENTRY; DO NOT USE.
 -------------------
-[statistics]:entropy=0.3807 knn_dist=0.1431 mahalanobis=18.3442 top1_conf=0.9530 - [decision]:LOG | [ground_truth]:normal
+[statistics]:entropy=0.3922 knn_dist=0.0913 mahalanobis=13.3843 top1_conf=0.9514 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.3434 knn_dist=1.1534 mahalanobis=89.0360 top1_conf=0.9583 - [decision]:ALERT | [ground_truth]:abnormal
+[statistics]:entropy=0.4103 knn_dist=0.1023 mahalanobis=15.6929 top1_conf=0.9488 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.3512 knn_dist=0.3321 mahalanobis=34.6292 top1_conf=0.9570 - [decision]:LOG | [ground_truth]:normal
+[statistics]:entropy=0.3636 knn_dist=1.1019 mahalanobis=77.0489 top1_conf=0.9554 - [decision]:ALERT | [ground_truth]:abnormal
 -------------------
-[statistics]:entropy=0.3273 knn_dist=1.1033 mahalanobis=80.0809 top1_conf=0.9603 - [decision]:ALERT | [ground_truth]:abnormal
+[statistics]:entropy=0.4097 knn_dist=0.0991 mahalanobis=12.2198 top1_conf=0.9489 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.3980 knn_dist=1.2050 mahalanobis=85.4945 top1_conf=0.9506 - [decision]:ALERT | [ground_truth]:abnormal
+[statistics]:entropy=0.3670 knn_dist=1.1922 mahalanobis=73.7824 top1_conf=0.9549 - [decision]:ALERT | [ground_truth]:abnormal
 -------------------
-[statistics]:entropy=0.3801 knn_dist=0.0901 mahalanobis=12.8214 top1_conf=0.9531 - [decision]:LOG | [ground_truth]:normal
+[statistics]:entropy=0.3711 knn_dist=1.1955 mahalanobis=77.4733 top1_conf=0.9543 - [decision]:ALERT | [ground_truth]:abnormal
 -------------------
-[statistics]:entropy=0.3672 knn_dist=0.1526 mahalanobis=21.0568 top1_conf=0.9549 - [decision]:LOG | [ground_truth]:normal
+[statistics]:entropy=0.3844 knn_dist=0.1854 mahalanobis=21.8719 top1_conf=0.9525 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.2880 knn_dist=0.3832 mahalanobis=43.8138 top1_conf=0.9657 - [decision]:ALERT | [ground_truth]:normal
+[statistics]:entropy=0.3556 knn_dist=0.1486 mahalanobis=17.4800 top1_conf=0.9566 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.3586 knn_dist=0.2176 mahalanobis=23.3810 top1_conf=0.9561 - [decision]:LOG | [ground_truth]:normal
+[statistics]:entropy=0.3772 knn_dist=0.1717 mahalanobis=19.9444 top1_conf=0.9535 - [decision]:LOG | [ground_truth]:normal
 -------------------
-[statistics]:entropy=0.3880 knn_dist=0.0858 mahalanobis=12.3786 top1_conf=0.9520 - [decision]:LOG | [ground_truth]:normal
+[statistics]:entropy=0.3989 knn_dist=0.0783 mahalanobis=10.8306 top1_conf=0.9505 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3599 knn_dist=0.1812 mahalanobis=20.1123 top1_conf=0.9559 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3752 knn_dist=0.0935 mahalanobis=16.5471 top1_conf=0.9538 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3997 knn_dist=1.1353 mahalanobis=76.7442 top1_conf=0.9503 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.3756 knn_dist=1.0835 mahalanobis=75.6376 top1_conf=0.9534 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.4055 knn_dist=0.1188 mahalanobis=15.5020 top1_conf=0.9495 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3949 knn_dist=0.0571 mahalanobis=10.5816 top1_conf=0.9511 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3832 knn_dist=1.1652 mahalanobis=94.3464 top1_conf=0.9527 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.3777 knn_dist=0.1023 mahalanobis=13.8430 top1_conf=0.9535 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.4060 knn_dist=1.0815 mahalanobis=74.7435 top1_conf=0.9494 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.3681 knn_dist=0.1286 mahalanobis=14.7860 top1_conf=0.9548 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.4218 knn_dist=1.1815 mahalanobis=90.4491 top1_conf=0.9471 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.3821 knn_dist=0.0734 mahalanobis=13.3899 top1_conf=0.9529 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3684 knn_dist=1.1216 mahalanobis=72.4632 top1_conf=0.9548 - [decision]:ALERT | [ground_truth]:abnormal
+-------------------
+[statistics]:entropy=0.3779 knn_dist=0.1241 mahalanobis=16.4784 top1_conf=0.9534 - [decision]:LOG | [ground_truth]:normal
+-------------------
+[statistics]:entropy=0.3834 knn_dist=0.0619 mahalanobis=12.4791 top1_conf=0.9527 - [decision]:LOG | [ground_truth]:normal
 -------------------

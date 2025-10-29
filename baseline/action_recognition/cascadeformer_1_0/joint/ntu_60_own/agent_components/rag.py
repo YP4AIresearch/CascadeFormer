@@ -32,8 +32,8 @@ def print_policy_db(policies_store: FAISS):
         print(doc.page_content, flush=True)
         print("-------------------", flush=True)
 
-def write_policy_db(policies_store: FAISS):
-    with open("policies_db.kb", "w") as f:
+def write_policy_db(policies_store: FAISS, path: str):
+    with open(path, "w") as f:
         for _, doc in policies_store.docstore._dict.items():
             f.write(doc.page_content + "\n")
             f.write("-------------------\n")

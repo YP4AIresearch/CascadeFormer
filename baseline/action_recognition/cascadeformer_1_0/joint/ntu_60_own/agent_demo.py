@@ -20,7 +20,7 @@ api_key = os.getenv("OPENAI_KEY")
 
 def agent_training_and_demo(inference_only: bool):
     INFERENCE_ONLY = inference_only
-    n_samples = 10
+    n_samples = 25
     model = CascadeFormerWrapper(device="cuda")
     
     # if no trained knn, create one
@@ -50,7 +50,7 @@ def agent_training_and_demo(inference_only: bool):
         )
     else:
         # load existing vector stores
-        policies_store = FAISS.load_local("vectorstores/policies", emb, allow_dangerous_deserialization=True)
+        policies_store = FAISS.load_local("vectorstores/initial_policies", emb, allow_dangerous_deserialization=True)
         incidents_store = FAISS.load_local("vectorstores/incidents", emb, allow_dangerous_deserialization=True)
 
 
@@ -62,13 +62,13 @@ def agent_training_and_demo(inference_only: bool):
             train_one_sample(policies_store, incidents_store, model, knn, json_path="demo_window.json")
 
         os.makedirs("vectorstores", exist_ok=True)
-        policies_store.save_local("vectorstores/policies")
+        policies_store.save_local("vectorstores/initial_policies")
         incidents_store.save_local("vectorstores/incidents")
 
         # write the knowledge base to text files
         # NOTE: IMPORTANT - only write when training, not during inference
         write_incident_db(incidents_store)
-        write_policy_db(policies_store)
+        write_policy_db(policies_store, path="initial_policies_db.kb")
 
 
     # print both policies and incidents
@@ -78,11 +78,11 @@ def agent_training_and_demo(inference_only: bool):
     print("\n\nStart an inference demo...", flush=True)
     DEMO_VIDEO_PATH = "demo_window.mp4"
     DEMO_JSON_PATH = "demo_window.json"
-    policies_store = FAISS.load_local("vectorstores/policies", emb, allow_dangerous_deserialization=True)
+    policies_store = FAISS.load_local("vectorstores/initial_policies", emb, allow_dangerous_deserialization=True)
     incidents_store = FAISS.load_local("vectorstores/incidents", emb, allow_dangerous_deserialization=True)
 
     inference_demo(policies_store, incidents_store, model, knn, json_path=DEMO_JSON_PATH, video_path=DEMO_VIDEO_PATH)
 
 
 if __name__ == "__main__":
-    agent_training_and_demo(inference_only=True)
+    agent_training_and_demo(inference_only=False)
