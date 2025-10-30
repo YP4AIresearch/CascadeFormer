@@ -1,10 +1,12 @@
 from typing import Any, Dict, List
 import json
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import re
+import numpy as np
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
-import tqdm
+from tqdm import tqdm
+import sys
 from NTU_feeder import Feeder
 from .statistics import DistanceScorer, score_anomaly, perceive_window
 from .perceiver import CascadeFormerWrapper
@@ -132,15 +134,6 @@ def evaluate_random_batches_with_agent(policies_store, incidents_store, knn_scor
         vel=False,
         bone=False
     )
-    loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-    total_batches = len(loader)
-    
-    # --- randomly select `num_batches` distinct indices ---
-    import random
-    seed = 42
-    random.seed(seed)
-    selected_batches = sorted(random.sample(range(total_batches), min(num_batches, total_batches)))
-    print(f"[Info] Evaluating {len(selected_batches)} random batches out of {total_batches} total.")
 
     y_true, y_pred = [], []
 
@@ -149,11 +142,22 @@ def evaluate_random_batches_with_agent(policies_store, incidents_store, knn_scor
     model.cross_attn.eval()
     model.gait_head.eval()
 
-    with torch.inference_mode():
-        for b_idx, (skeletons, labels, _) in enumerate(loader):
-            if b_idx not in selected_batches:
-                continue  # skip batches not selected
+    rng = np.random.default_rng(42)
+    N = len(test_dataset)
+    k = min(num_batches * batch_size, N)   # sample k items (not batches)
 
+    idx = rng.choice(N, size=k, replace=False)  # unique item indices
+    subset = Subset(test_dataset, idx.tolist())
+
+    loader = DataLoader(
+        subset, batch_size=batch_size, shuffle=False,  # no need to shuffle: indices are already random
+    )
+
+    with torch.inference_mode():
+        for skeletons, labels, _ in tqdm(
+            loader, 
+            desc="Evaluating random batches"
+        ):
             skeletons = skeletons.to(device)                 
             labels_np = labels.cpu().numpy().astype(int)     
             windows = select_main_person_batch(skeletons)   # (B,T,V,C)
