@@ -55,20 +55,19 @@ def rl_policy_optimization(incidents_df: pd.DataFrame,
     r_model = train_a_reward_model(incidents_df)
 
     # 2) Search best policy params under learned R(s,a) reward model
-    best_params, best_reward = policy_search(r_model, incidents_df)
+    best_params: PolicyParams = policy_search(r_model, incidents_df)
     print("\n=== RL-based Policy Optimization Result ===", flush=True)
     print("[RL] Best params:", best_params)
-    print("[RL] Highest reward:", best_reward)
     print("===========================================", flush=True)
 
     # 3) Rebuild the policy part of the knowledge base with the learned params
     print("\n=== Rebuilding the policy knowledge base with the learned RL policy ===", flush=True)
     policy_text = (
         f"Raise an ALERT if any of the following conditions are met:\n"
-        f"- entropy >= {best_params.max_entropy:.4f}\n"
+        # f"- entropy >= {best_params.max_entropy:.4f}\n"
         f"- knn_dist >= {best_params.min_knn:.4f}\n"
         f"- mahalanobis >= {best_params.min_maha:.4f}\n"
-        f"- (1 - top1_conf) >= {best_params.min_low_conf:.4f}\n"
+        # f"- (1 - top1_conf) >= {best_params.min_low_conf:.4f}\n"
         f"Otherwise, LOG the event as normal."
     )
     

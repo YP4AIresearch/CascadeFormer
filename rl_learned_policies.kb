@@ -1,7 +1,5 @@
 Raise an ALERT if any of the following conditions are met:
-- entropy >= 0.3821
 - knn_dist >= 0.1486
 - mahalanobis >= 17.4800
-- (1 - top1_conf) >= 0.0471
 Otherwise, LOG the event as normal.
 -------------------

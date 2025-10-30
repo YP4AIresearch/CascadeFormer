@@ -58,9 +58,13 @@ def policy_decide(state, p: PolicyParams) -> str:
     returns 'ALERT' or 'LOG'
     """
     ent, knn, maha, top1 = state
-    lowconf = 1.0 - top1
+    # lowconf = 1.0 - top1
 
-    if (ent >= p.max_entropy) or (knn >= p.min_knn) or (maha >= p.min_maha) or (lowconf >= p.min_low_conf):
+    # if (ent >= p.max_entropy) or (knn >= p.min_knn) or (maha >= p.min_maha) or (lowconf >= p.min_low_conf):
+    #     return "ALERT"
+    # else:
+    #     return "LOG"
+    if (knn >= p.min_knn) or (maha >= p.min_maha):
         return "ALERT"
     else:
         return "LOG"
@@ -112,7 +116,7 @@ def policy_search(r_model, incidents_df: pd.DataFrame) -> PolicyParams:
         if ret > best_ret:
             best, best_ret = p, ret
 
-    return best, best_ret
+    return best
 
 def decide_with_rl_policy(state_features: np.ndarray, learned_params: PolicyParams) -> Dict[str, Any]:
     """
