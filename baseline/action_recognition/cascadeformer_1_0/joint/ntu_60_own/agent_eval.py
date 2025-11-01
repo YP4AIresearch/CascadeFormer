@@ -64,8 +64,8 @@ def main():
         # CascadeFormer 2
         PARAMS = PolicyParams(
             max_entropy = 0.3821,
-            min_knn = 0.1486,
-            min_maha = 17.4800,
+            min_knn = 0.1736,
+            min_maha = 19.9780,
             min_low_conf = 1 - 0.0471
         )
         evaluate_full_test_split_policy_only(

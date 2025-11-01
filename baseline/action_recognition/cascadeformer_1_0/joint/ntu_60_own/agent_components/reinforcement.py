@@ -57,13 +57,7 @@ def policy_decide(state, p: PolicyParams) -> str:
     state: np.ndarray shape (4,) in order [entropy, knn_dist, mahalanobis, top1_conf]
     returns 'ALERT' or 'LOG'
     """
-    ent, knn, maha, top1 = state
-    # lowconf = 1.0 - top1
-
-    # if (ent >= p.max_entropy) or (knn >= p.min_knn) or (maha >= p.min_maha) or (lowconf >= p.min_low_conf):
-    #     return "ALERT"
-    # else:
-    #     return "LOG"
+    _, knn, maha, _ = state
     if (knn >= p.min_knn) or (maha >= p.min_maha):
         return "ALERT"
     else:
@@ -92,25 +86,24 @@ def quantile_grid(values, qs):
 
 def policy_search(r_model, incidents_df: pd.DataFrame) -> PolicyParams:
     X = incidents_df[["entropy", "knn_dist", "mahalanobis", "top1_conf"]].values
-    ent, knn, maha, conf = X[:,0], X[:,1], X[:,2], X[:,3]
-    lowconf = 1 - conf
+    _, knn, maha, _ = X[:,0], X[:,1], X[:,2], X[:,3]
 
-    ent_q  = quantile_grid(ent, SEARCH_BARS)
+    #ent_q  = quantile_grid(ent, SEARCH_BARS)
     knn_q  = quantile_grid(knn, SEARCH_BARS)
     maha_q = quantile_grid(maha, SEARCH_BARS)
-    lc_q   = quantile_grid(lowconf, SEARCH_BARS)
+    #lc_q   = quantile_grid(lowconf, SEARCH_BARS)
 
     best, best_ret = None, -1e9
    
     # search space
-    candidates = [(e, k, m, lc) for e in ent_q for k in knn_q for m in maha_q for lc in lc_q]  # 625
+    candidates = [(k, m) for k in knn_q for m in maha_q]
     # grid search for the best policy parameters
-    for (e,k,m,lc) in tqdm(candidates, desc="Searching policies"):
+    for (k,m) in tqdm(candidates, desc="Searching policies"):
         p = PolicyParams(
-            max_entropy=round(float(e), 4),
+            max_entropy=0, # not used
             min_knn=round(float(k), 4),
             min_maha=round(float(m), 4),
-            min_low_conf=round(float(lc), 4)
+            min_low_conf=0  # not used
         )
         ret = expected_return_of_policy(r_model, incidents_df, p)
         if ret > best_ret:

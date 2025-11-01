@@ -66,6 +66,8 @@ export OPENAI_API_KEY=<API KEY GOES HERE>
 CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/agent_demo.py
 # reinforcement-learning
 CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/agent_RL.py
+# evaluation
+CUDA_VISIBLE_DEVICES=0 taskset -c 20-30 python baseline/action_recognition/cascadeformer_1_0/joint/ntu_60_own/agent_eval.py
 ```
 
 ### RL-assisted grid search for policy thresholds

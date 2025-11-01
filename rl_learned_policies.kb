@@ -1,5 +1,5 @@
-Raise an ALERT if any of the following conditions are met:
-- knn_dist >= 0.1486
-- mahalanobis >= 17.4800
+Raise an ALERT if BOTH of the following conditions are met:
+- knn_dist >= 0.1736
+- mahalanobis >= 19.9780
 Otherwise, LOG the event as normal.
 -------------------

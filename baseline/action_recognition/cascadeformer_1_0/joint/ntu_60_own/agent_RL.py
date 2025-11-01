@@ -63,7 +63,7 @@ def rl_policy_optimization(incidents_df: pd.DataFrame,
     # 3) Rebuild the policy part of the knowledge base with the learned params
     print("\n=== Rebuilding the policy knowledge base with the learned RL policy ===", flush=True)
     policy_text = (
-        f"Raise an ALERT if any of the following conditions are met:\n"
+        f"Raise an ALERT if BOTH of the following conditions are met:\n"
         # f"- entropy >= {best_params.max_entropy:.4f}\n"
         f"- knn_dist >= {best_params.min_knn:.4f}\n"
         f"- mahalanobis >= {best_params.min_maha:.4f}\n"

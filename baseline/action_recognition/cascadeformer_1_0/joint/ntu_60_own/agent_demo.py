@@ -20,7 +20,7 @@ api_key = os.getenv("OPENAI_KEY")
 
 def agent_training_and_demo(inference_only: bool):
     INFERENCE_ONLY = inference_only
-    n_samples = 25
+    n_samples = 10_000
     model = CascadeFormerWrapper(device="cuda")
     
     # if no trained knn, create one
