@@ -12,7 +12,7 @@ from agent_components.eval import evaluate_full_test_split_with_agent, evaluate_
 from agent_components.reinforcement import PolicyParams
 
 def main():
-    MODE = "random" # 'full' or 'random' or 'policy_only'
+    MODE = "policy_only" # 'full' or 'random' or 'policy_only'
     POLICY = "RL" # 'RL' 'classification'
 
 
@@ -63,10 +63,10 @@ def main():
 
         # CascadeFormer 2
         PARAMS = PolicyParams(
-            max_entropy = 0.3821,
-            min_knn = 0.1736,
-            min_maha = 19.9780,
-            min_low_conf = 1 - 0.0471
+            max_entropy = 0,
+            min_knn = 1.0935,
+            min_maha = 74.1626,
+            min_low_conf = 0
         )
         evaluate_full_test_split_policy_only(
             knn_scorer,
@@ -75,6 +75,8 @@ def main():
             batch_size=16,
             device="cuda"
         )
+    else:
+        raise ValueError(f"Unknown MODE: {MODE}")
 
 
 if __name__ == "__main__":

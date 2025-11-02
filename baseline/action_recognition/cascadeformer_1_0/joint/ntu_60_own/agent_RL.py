@@ -15,6 +15,8 @@ from agent_components.statistics import DistanceScorer, score_anomaly, perceive_
 from agent_components.rag import print_incident_db, print_policy_db, write_policy_db
 from agent_components.reinforcement import PolicyParams, train_a_reward_model, policy_search, decide_with_rl_policy
 from agent_components.data_utils import extract_state_features
+from agent_components.visualization import visualize_knn_maha_scatter
+
 
 # Load environment variables from .env file
 load_dotenv(dotenv_path="/home/peng.1007/CascadeFormer/.env")
@@ -139,7 +141,40 @@ def agent_rl_policy_optimization():
     print("😛" * 20, flush=True)
     print_policy_db(new_policy_store)
 
+
+def visualization():
+    def _parse_incidents_kb_file(path: str = "incidents_db.kb") -> pd.DataFrame:
+        p = Path(path)
+        rows = []
+        for line in p.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if not s or s.startswith("DUMMY") or set(s) == {"-"}:
+                continue
+            m = ST_RE.search(s)
+            d = m.groupdict()
+            rows.append({
+                "entropy": float(d["entropy"]),
+                "knn_dist": float(d["knn_dist"]),
+                "mahalanobis": float(d["mahalanobis"]),
+                "top1_conf": float(d["top1_conf"]),
+                "decision": d["decision"].upper(),
+                "gt_label": (d["gt_label"]).lower(),
+            })
+        return pd.DataFrame(rows)
+
+    incidents_df = _parse_incidents_kb_file("incidents_db.kb")
+    print(f"[incidents_df] {len(incidents_df)} rows | columns: {list(incidents_df.columns)}")
+
+    fig_path = visualize_knn_maha_scatter(
+        incidents_df,
+        outpath="knn_maha_scatter.png",
+        log_maha=True  # toggle if your maha scale is wide
+    )
+    print(f"[viz] Saved KNN vs. Mahalanobis scatter to {fig_path}", flush=True)
+
 if __name__ == "__main__":
-    agent_rl_policy_optimization()
+    #agent_rl_policy_optimization()
+    visualization()
+
 
 
