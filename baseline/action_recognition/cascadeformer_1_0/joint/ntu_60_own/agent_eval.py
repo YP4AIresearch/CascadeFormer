@@ -62,12 +62,21 @@ def main():
     elif MODE == "policy_only":
 
         # CascadeFormer 2
+        # PARAMS = PolicyParams(
+        #     max_entropy = 0,
+        #     min_knn = 1.0935,
+        #     min_maha = 74.1626,
+        #     min_low_conf = 0
+        # )
+
+        # fixed threshold
         PARAMS = PolicyParams(
             max_entropy = 0,
-            min_knn = 1.0935,
-            min_maha = 74.1626,
+            min_knn = 1.1568,
+            min_maha = 78.7561,
             min_low_conf = 0
         )
+
         evaluate_full_test_split_policy_only(
             knn_scorer,
             model,

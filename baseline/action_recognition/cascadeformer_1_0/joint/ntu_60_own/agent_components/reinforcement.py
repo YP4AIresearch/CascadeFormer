@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from typing import Dict, Any
+from typing import Dict, Any, List
 from sklearn.ensemble import RandomForestRegressor
 from dataclasses import dataclass
 
@@ -110,6 +110,47 @@ def policy_search(r_model, incidents_df: pd.DataFrame) -> PolicyParams:
             best, best_ret = p, ret
 
     return best
+
+def fixed_threshold_policy_search(
+    incidents_df: pd.DataFrame,
+    knn_quantile: float = 0.90,
+    maha_quantile: float = 0.90
+) -> PolicyParams:
+    """
+    A simple, interpretable baseline: pick fixed, handcrafted quantiles
+    for kNN and Mahalanobis (no search).
+    """
+    knn_thr  = float(np.quantile(incidents_df["knn_dist"].values, knn_quantile))
+    maha_thr = float(np.quantile(incidents_df["mahalanobis"].values, maha_quantile))
+    return PolicyParams(
+        max_entropy=0.0,
+        min_knn=round(knn_thr, 4),
+        min_maha=round(maha_thr, 4),
+        min_low_conf=0.0,
+    )
+
+def random_threshold_policy_search(
+    incidents_df: pd.DataFrame,
+    search_bars: List[float] = SEARCH_BARS,
+    rng: int  = 42
+) -> PolicyParams:
+    """
+    Sample thresholds by drawing quantiles at random from SEARCH_BARS.
+    (One-shot random policy; no tuning.)
+    """
+    rs = np.random.default_rng(rng)
+    kq = rs.choice(list(search_bars))
+    mq = rs.choice(list(search_bars))
+
+    knn_thr  = float(np.quantile(incidents_df["knn_dist"].values, kq))
+    maha_thr = float(np.quantile(incidents_df["mahalanobis"].values, mq))
+    return PolicyParams(
+        max_entropy=0.0,
+        min_knn=round(knn_thr, 4),
+        min_maha=round(maha_thr, 4),
+        min_low_conf=0.0,
+    )
+
 
 def decide_with_rl_policy(state_features: np.ndarray, learned_params: PolicyParams) -> Dict[str, Any]:
     """

@@ -13,7 +13,7 @@ from agent_components.constants import ST_RE
 from agent_components.perceiver import CascadeFormerWrapper
 from agent_components.statistics import DistanceScorer, score_anomaly, perceive_window
 from agent_components.rag import print_incident_db, print_policy_db, write_policy_db
-from agent_components.reinforcement import PolicyParams, train_a_reward_model, policy_search, decide_with_rl_policy
+from agent_components.reinforcement import PolicyParams, train_a_reward_model, policy_search, decide_with_rl_policy, fixed_threshold_policy_search, random_threshold_policy_search
 from agent_components.data_utils import extract_state_features
 from agent_components.visualization import visualize_knn_maha_scatter
 
@@ -52,18 +52,34 @@ def process_window_RL(
 def rl_policy_optimization(incidents_df: pd.DataFrame,
                                 policies_store: FAISS, incidents_store: FAISS,
                                 knn_scorer, model: CascadeFormerWrapper,
-                                device: str = "cuda") -> FAISS:
+                                device: str = "cuda", search_mode: str = "RLVR") -> FAISS:
     # 1) Train reward model from past incidents
     r_model = train_a_reward_model(incidents_df)
 
     # 2) Search best policy params under learned R(s,a) reward model
-    best_params: PolicyParams = policy_search(r_model, incidents_df)
-    print("\n=== RL-based Policy Optimization Result ===", flush=True)
-    print("[RL] Best params:", best_params)
-    print("===========================================", flush=True)
+
+
+    if search_mode == "fixed":
+        best_params: PolicyParams = fixed_threshold_policy_search(incidents_df, knn_quantile=0.90, maha_quantile=0.90)
+        print("\n=== Fixed Quantile-based Policy Optimization Result ===", flush=True)
+        print("[Fixed] Best params:", best_params)
+        print("===========================================", flush=True)
+    elif search_mode == "random":
+        best_params: PolicyParams = random_threshold_policy_search(incidents_df, rng=67)
+        print("\n=== Random Threshold-based Policy Optimization Result ===", flush=True)
+        print("[Random] Best params:", best_params)
+        print("===========================================", flush=True)
+    elif search_mode == "RLVR":
+        best_params: PolicyParams = policy_search(r_model, incidents_df)
+        print("\n=== RL-based Policy Optimization Result ===", flush=True)
+        print("[RLVR] Best params:", best_params)
+        print("===========================================", flush=True)
+    elif search_mode == "llm":
+        raise NotImplementedError("LLM-based policy optimization is not implemented yet.")
+    else:
+        raise ValueError(f"Unknown search_mode: {search_mode}")
 
     # 3) Rebuild the policy part of the knowledge base with the learned params
-    print("\n=== Rebuilding the policy knowledge base with the learned RL policy ===", flush=True)
     policy_text = (
         f"Raise an ALERT if BOTH of the following conditions are met:\n"
         # f"- entropy >= {best_params.max_entropy:.4f}\n"
@@ -83,7 +99,7 @@ def rl_policy_optimization(incidents_df: pd.DataFrame,
     return new_policies_store
 
 
-def agent_rl_policy_optimization():
+def agent_rl_policy_optimization(search_mode: str):
     """
     RL-based policy optimization entrypoint.
     Builds incidents_df from KB, trains reward model, searches best policy.
@@ -130,7 +146,8 @@ def agent_rl_policy_optimization():
         incidents_df,
         policies_store, incidents_store,
         knn, model,
-        device="cuda"
+        device="cuda",
+        search_mode=search_mode
     )
 
     # RL-based policies in vectorstore
@@ -173,8 +190,9 @@ def visualization():
     print(f"[viz] Saved KNN vs. Mahalanobis scatter to {fig_path}", flush=True)
 
 if __name__ == "__main__":
-    #agent_rl_policy_optimization()
-    visualization()
+    search_mode = "fixed" # options: "RLVR", "fixed", "random"
+    agent_rl_policy_optimization(search_mode=search_mode)
+    #visualization()
 
 
 
