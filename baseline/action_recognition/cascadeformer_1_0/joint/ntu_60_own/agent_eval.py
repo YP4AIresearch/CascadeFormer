@@ -70,12 +70,21 @@ def main():
         # )
 
         # fixed threshold
+        # PARAMS = PolicyParams(
+        #     max_entropy = 0,
+        #     min_knn = 1.1568,
+        #     min_maha = 78.7561,
+        #     min_low_conf = 0
+        # )
+
+        # random threshold
         PARAMS = PolicyParams(
             max_entropy = 0,
-            min_knn = 1.1568,
-            min_maha = 78.7561,
+            min_knn = 1.1477,
+            min_maha = 75.9257,
             min_low_conf = 0
         )
+
 
         evaluate_full_test_split_policy_only(
             knn_scorer,
