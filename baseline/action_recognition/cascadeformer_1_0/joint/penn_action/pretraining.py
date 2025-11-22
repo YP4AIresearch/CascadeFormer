@@ -60,10 +60,10 @@ class BaseT1(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # reconstruction head (only used during training)
-        # if three_d:
-        #     self.reconstruction_head = nn.Linear(d_model, num_joints * 3)
-        # else:   
-        #     self.reconstruction_head = nn.Linear(d_model, num_joints * 2)
+        if three_d:
+            self.reconstruction_head = nn.Linear(d_model, num_joints * 3)
+        else:   
+            self.reconstruction_head = nn.Linear(d_model, num_joints * 2)
         
         
         # MLP reconstruction head (for ablation)
@@ -74,11 +74,11 @@ class BaseT1(nn.Module):
         # )
 
         # residual MLP head (for ablation)
-        self.reconstruction_head = ResidualMLPHead(d_model, num_joints * 2)
+        # self.reconstruction_head = ResidualMLPHead(d_model, num_joints * 2)
 
 
-        print("🧠" * 20)
-        print("using MLP reconstruction RESIDUAL head!")
+        # print("🧠" * 20)
+        # print("using MLP reconstruction RESIDUAL head!")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """

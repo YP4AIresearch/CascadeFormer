@@ -6,6 +6,7 @@ from pretraining import train_T1, BaseT1
 from finetuning import load_T1, finetuning, GaitRecognitionHead
 
 from penn_utils import set_seed, build_penn_action_lists, split_train_val, collate_fn_finetuning, NUM_JOINTS_PENN
+from ubnormal_loader import build_ubnormal_lists
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Gait Recognition Training")
@@ -27,7 +28,8 @@ def main():
     val_ratio = 0.05
 
     args = parse_args()
-    root_dir = args.root_dir
+    pretrain_dir = "UBnormal/"
+    finetune_dir = "Penn_Action/"
     # get the number of classes from the root_dir by taking the trailing number
     batch_size = args.batch_size
     num_epochs = args.num_epochs
@@ -53,15 +55,17 @@ def main():
     print(f"[INFO] Starting Penn Action dataset processing on {device}...")
     print("=" * 50)
 
-    # load the dataset
-    train_seq, train_lbl, _, _ = build_penn_action_lists(root_dir)
-    train_seq, train_lbl, val_seq, val_lbl = split_train_val(train_seq, train_lbl, val_ratio=val_ratio)
+    # load the datasets
+    pretrained_seq, pretrained_lbl = build_ubnormal_lists(pretrain_dir)
+    pretrained_seq, pretrained_lbl, pretrained_val_seq, pretrained_val_lbl = split_train_val(pretrained_seq, pretrained_lbl, val_ratio=val_ratio)
+    pretrain_dataset = ActionRecognitionDataset(pretrained_seq, pretrained_lbl)
+    pretrain_val_dataset = ActionRecognitionDataset(pretrained_val_seq, pretrained_val_lbl)
 
-    train_dataset = ActionRecognitionDataset(train_seq, train_lbl)
-    val_dataset = ActionRecognitionDataset(val_seq, val_lbl)
-        
+
+    finetune_seq, finetune_lbl, _, _ = build_penn_action_lists(finetune_dir)
+    finetune_seq, finetune_lbl, finetune_val_seq, finetune_val_lbl = split_train_val(finetune_seq, finetune_lbl, val_ratio=val_ratio)        
     # get the number of classes
-    num_classes = len(set(train_lbl))
+    num_classes = len(set(finetune_lbl))
     print(f"[INFO] Number of classes: {num_classes}")
     print("=" * 100)
 
@@ -91,8 +95,8 @@ def main():
         lr = 1e-4
         train_T1(
             masking_strategy=masking_strategy,
-            train_dataset=train_dataset,
-            val_dataset=val_dataset,
+            train_dataset=pretrain_dataset,
+            val_dataset=pretrain_val_dataset,
             model=model,
             num_epochs=num_epochs,
             batch_size=batch_size,
@@ -103,7 +107,7 @@ def main():
 
         print("[TEST] testing global joint masking" + "=" * 40)
         # save pretrained model
-        torch.save(model.state_dict(), "action_checkpoints/Penn_pretrained.pt")
+        torch.save(model.state_dict(), "action_checkpoints/UBnormal_pretrained.pt")
 
         print("Aha! pretraining is done!")
         print("=" * 100)
@@ -116,7 +120,7 @@ def main():
     # load T1 models
     three_d = False
     t1 = load_T1(
-        model_path="action_checkpoints/Penn_pretrained.pt",
+        model_path="action_checkpoints/UBnormal_pretrained.pt",
         num_joints=NUM_JOINTS_PENN,
         three_d=three_d,
         d_model=hidden_size,
@@ -128,8 +132,8 @@ def main():
 
     print("pretrained model loaded successfully!")
 
-    train_finetuning_dataset = ActionRecognitionDataset(train_seq, train_lbl)
-    val_finetuning_dataset = ActionRecognitionDataset(val_seq, val_lbl)
+    train_finetuning_dataset = ActionRecognitionDataset(finetune_seq, finetune_lbl)
+    val_finetuning_dataset = ActionRecognitionDataset(finetune_val_seq, finetune_val_lbl)
 
 
     train_finetuning_dataloader = torch.utils.data.DataLoader(

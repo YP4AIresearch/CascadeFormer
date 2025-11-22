@@ -2,7 +2,6 @@
 
 ## News/Updates
 
-- [September 16, 2025] paper under review at ICLR 2026!
 - [August 31, 2025] paper available on [arXiv](https://arxiv.org/abs/2509.00692)!
 - [July 19, 2025] model checkpoints are publicly available on [HuggingFace](https://huggingface.co/YusenPeng/CascadeFormerCheckpoints) for further analysis/application!
 

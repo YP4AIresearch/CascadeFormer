@@ -1,20 +1,11 @@
-import os
-import glob
-import numpy as np
 import torch
-from sklearn.metrics import accuracy_score
-import seaborn as sns
-import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, precision_score, f1_score
 import argparse
-from typing import List, Tuple
-from itertools import combinations
+from typing import Tuple
 from torch import nn
-from torch import optim
-from torch import Tensor
 from torch.utils.data import DataLoader
-from torch.nn import functional as F
 from base_dataset import ActionRecognitionDataset
-from penn_utils import set_seed, build_penn_action_lists, split_train_val, NUM_JOINTS_PENN, collate_fn_inference
+from penn_utils import set_seed, build_penn_action_lists, split_train_val, collate_fn_inference
 from finetuning import load_T1, load_T2, load_cross_attn, GaitRecognitionHead
 
 def evaluate(
@@ -70,8 +61,10 @@ def evaluate(
     all_labels = torch.cat(all_labels)
 
     accuracy = accuracy_score(all_labels, all_preds)
+    precision = precision_score(all_labels, all_preds, average='weighted')
+    f1 = f1_score(all_labels, all_preds, average='weighted')
 
-    return accuracy, all_preds, all_labels
+    return accuracy, precision, f1, all_preds, all_labels
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Gait Recognition Inference")
@@ -143,7 +136,7 @@ def main():
     print("=" * 50)
     print("[INFO] Starting evaluation...")
     print("=" * 50)
-    accuracy, _, _ = evaluate(
+    accuracy, precision, f1, _, _ = evaluate(
         test_loader,
         t1,
         t2,
@@ -155,6 +148,8 @@ def main():
     print("=" * 50)
     print("[INFO] Evaluation completed!")
     print(f"Final Accuracy: {accuracy:.4f}")
+    print(f"Final Precision: {precision:.4f}")
+    print(f"Final F1-Score: {f1:.4f}")
     print("=" * 50)
 
 
