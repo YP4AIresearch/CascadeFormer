@@ -10,7 +10,7 @@
 - [August 31, 2025] paper available on [arXiv](https://arxiv.org/abs/2509.00692)!
 - [July 19, 2025] model checkpoints are publicly available on [HuggingFace](https://huggingface.co/YusenPeng/CascadeFormerCheckpoints) for further analysis/application!
 
-## CascadeFormer
+<!-- ## CascadeFormer
 
 ![alt text](docs/CascadeFormer_pretrain.png)
 
@@ -18,9 +18,9 @@ Overview of the masked pretraining component in CascadeFormer. A fixed percentag
 
 ![alt text](docs/CascadeFormer_finetune.png)
 
-Overview of the cascading finetuning component in CascadeFormer. The frame embeddings produced by the pre-trained temporal transformer backbone (T1) are passed into a task-specific transformer (T2) for hierarchical refinement. The output of T2 is fused with the original embeddings via a cross-attention module. The resulting fused representations are aggregated through frame-level average pooling and passed to a lightweight classification head. The entire model—including T1, T2, and the classification head—is optimized using cross-entropy loss on action labels during finetuning.
+Overview of the cascading finetuning component in CascadeFormer. The frame embeddings produced by the pre-trained temporal transformer backbone (T1) are passed into a task-specific transformer (T2) for hierarchical refinement. The output of T2 is fused with the original embeddings via a cross-attention module. The resulting fused representations are aggregated through frame-level average pooling and passed to a lightweight classification head. The entire model—including T1, T2, and the classification head—is optimized using cross-entropy loss on action labels during finetuning. -->
 
-## Evaluation
+## Evaluation Results
 
 ![alt text](docs/eval_results.png)
 
