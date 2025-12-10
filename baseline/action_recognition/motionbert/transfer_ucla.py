@@ -1,14 +1,16 @@
+from collections import OrderedDict
 import torch
 import numpy as np
-from typing import Tuple
 from tqdm import tqdm
 import torch.nn.functional as F
 import random
+import os
 import argparse
 from torch.utils.data import DataLoader
 from base_dataset import ActionRecognitionDataset
 from SF_UCLA_loader import SF_UCLA_Dataset, skateformer_collate_fn
-
+from MB_utils import ActionNet
+from DSTFormer import load_backbone
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -27,13 +29,14 @@ def parse_args():
 
 
 
-def ucla20_to_ntu25(skel_batch: torch.Tensor) -> torch.Tensor:
+def ucla20_to_mb17_single(skel_batch: torch.Tensor) -> torch.Tensor:
     """
     skel_batch:
-        (B, T, 60)  or  (B, T, 20, 3)
-        representing UCLA 20-joint skeletons (x,y,z per joint).
+        (B, T, 60) or (B, T, 20, 3)
+        UCLA 20-joint skeletons (x,y,z or similar).
     returns:
-        (B, T, 25, 3) in NTU 25-joint layout.
+        (B, 1, T, 17, 3) for MotionBERT ActionNet:
+        1 person, 17 joints, channels=(x,y,score).
     """
     if skel_batch.dim() == 3:
         B, T, F = skel_batch.shape
@@ -41,7 +44,7 @@ def ucla20_to_ntu25(skel_batch: torch.Tensor) -> torch.Tensor:
         skel_batch = skel_batch.view(B, T, 20, 3)
     elif skel_batch.dim() == 4:
         B, T, J, C = skel_batch.shape
-        assert J == 20 and C == 3, f"Expected (20,3), got ({J},{C})"
+        assert J == 20 and C >= 2, f"Expected (20,>=2), got ({J},{C})"
     else:
         raise ValueError(f"Unexpected skel_batch shape {skel_batch.shape}")
 
@@ -49,80 +52,62 @@ def ucla20_to_ntu25(skel_batch: torch.Tensor) -> torch.Tensor:
     device = skel_batch.device
     dtype  = skel_batch.dtype
 
-    u = skel_batch # (B, T, 20, 3)
-    out = torch.zeros(B, T, 25, 3, device=device, dtype=dtype)
-    
-    # mapping: torso
-    out[:, :, 0, :] = u[:, :, 0, :]   # N1  <- U1  hipCenter
-    out[:, :, 1, :] = u[:, :, 1, :]   # N2  <- U2  spine
-    out[:, :, 3, :] = u[:, :, 3, :]   # N4  <- U4  head
-    out[:, :, 2, :] = u[:, :, 2, :]   # N3  <- U3  neck
+    u = skel_batch  # (B, T, 20, 3)
 
-    # mapping: left arm
-    out[:, :, 4, :] = u[:, :, 4, :]   # N5  <- U5  left shoulder
-    out[:, :, 5, :] = u[:, :, 5, :]   # N6  <- U6  left elbow
-    out[:, :, 6, :] = u[:, :, 6, :]   # N7  <- U7  left wrist
-    out[:, :, 7, :] = u[:, :, 7, :]   # N8  <- U8  left hand
+    # Build 17-joint array (x,y,score)
+    out = torch.zeros(B, T, 17, 3, device=device, dtype=dtype)
 
-    # mapping: right arm
-    out[:, :, 8, :]  = u[:, :, 8, :]   # N9  <- U9  right shoulder
-    out[:, :, 9, :]  = u[:, :, 9, :]   # N10 <- U10 right elbow
-    out[:, :, 10, :] = u[:, :, 10, :]  # N11 <- U11 right wrist
-    out[:, :, 11, :] = u[:, :, 11, :]  # N12 <- U12 right hand
+    # use first two channels as x,y
+    xy = u[..., :2]  # (B,T,20,2)
 
-    # mapping: left leg
-    out[:, :, 12, :] = u[:, :, 12, :]  # N13 <- U13 left hip
-    out[:, :, 13, :] = u[:, :, 13, :]  # N14 <- U14 left knee
-    out[:, :, 14, :] = u[:, :, 14, :]  # N15 <- U15 left ankle
-    out[:, :, 15, :] = u[:, :, 15, :]  # N16 <- U16 left foot
+    # map Kinect joints (U#) to COCO joints (0..16)
+    # head index = 3 (U4)
+    head = xy[:, :, 3, :]
 
-    # mapping: right leg
-    out[:, :, 16, :] = u[:, :, 16, :]  # N17 <- U17 right hip
-    out[:, :, 17, :] = u[:, :, 17, :]  # N18 <- U18 right knee
-    out[:, :, 18, :] = u[:, :, 18, :]  # N19 <- U19 right ankle
-    out[:, :, 19, :] = u[:, :, 19, :]  # N20 <- U20 right foot
+    # 0-4: face joints all approximated by head
+    out[:, :, 0, :2] = head  # nose
+    out[:, :, 1, :2] = head  # left eye
+    out[:, :, 2, :2] = head  # right eye
+    out[:, :, 3, :2] = head  # left ear
+    out[:, :, 4, :2] = head  # right ear
 
-    # approximate extra NTU joints by reusing some UCLA joints
-    out[:, :, 20, :] = u[:, :, 2, :]   # N21 spineShoulder <- U3
-    out[:, :, 21, :] = u[:, :, 7, :]   # N22 leftHandTip   <- U8
-    out[:, :, 22, :] = u[:, :, 7, :]   # N23 leftThumb     <- U8
-    out[:, :, 23, :] = u[:, :, 11, :]  # N24 rightHandTip  <- U12
-    out[:, :, 24, :] = u[:, :, 11, :]  # N25 rightThumb    <- U12
+    # shoulders, elbows, wrists
+    out[:, :, 5, :2] = xy[:, :, 4, :]   # l_shoulder  <- U5
+    out[:, :, 6, :2] = xy[:, :, 8, :]   # r_shoulder  <- U9
+    out[:, :, 7, :2] = xy[:, :, 5, :]   # l_elbow     <- U6
+    out[:, :, 8, :2] = xy[:, :, 9, :]   # r_elbow     <- U10
+    out[:, :, 9, :2] = xy[:, :, 6, :]   # l_wrist     <- U7
+    out[:, :, 10, :2] = xy[:, :, 10, :] # r_wrist     <- U11
 
+    # hips, knees, ankles
+    out[:, :, 11, :2] = xy[:, :, 12, :] # l_hip   <- U13
+    out[:, :, 12, :2] = xy[:, :, 16, :] # r_hip   <- U17
+    out[:, :, 13, :2] = xy[:, :, 13, :] # l_knee  <- U14
+    out[:, :, 14, :2] = xy[:, :, 17, :] # r_knee  <- U18
+    out[:, :, 15, :2] = xy[:, :, 14, :] # l_ankle <- U15
+    out[:, :, 16, :2] = xy[:, :, 18, :] # r_ankle <- U19
+
+    # set score = 1.0 for all joints
+    out[:, :, :, 2] = 1.0
+
+    # add person dim M=1 → (B,1,T,17,3)
+    out = out.unsqueeze(1)
     return out
 
-
-
-
-@torch.no_grad()
-def extract_feats_ucla(
-        dataloader: torch.utils.data.DataLoader, 
-        model_wrapper:CascadeFormerWrapper, 
-        device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
-    
+def extract_feats(dataloader_x, model, device):
     all_feats = []
-    all_labels = []
-
-    model_wrapper.t1.eval()
-    model_wrapper.t2.eval()
-    model_wrapper.cross_attn.eval()
-    model_wrapper.gait_head.eval()
-
-    for batch in tqdm(dataloader, desc="Extracting UCLA features"):
-        batch_input, batch_labels = batch[0], batch[1]
-
-        # NOTE: make sure that data shape is aligned (B, T, J=25, C=3)
-        batch_input = ucla20_to_ntu25(batch_input)
-        batch_input = batch_input.to(device)
-        batch_labels = batch_labels.to(device)
-        out = model_wrapper.infer(batch_input)
-        emb = torch.from_numpy(out["embedding"])
-        all_feats.append(emb)
-        all_labels.append(batch_labels.cpu())
-
-    all_feats = torch.cat(all_feats, dim=0)
-    all_labels = torch.cat(all_labels, dim=0)
-    return all_feats, all_labels
+    all_gts = []
+    with torch.no_grad():
+        for idx, (batch_input, batch_gt) in tqdm(enumerate(dataloader_x)):    # (N, 2, T, 17, 3)
+            batch_input = ucla20_to_mb17_single(batch_input)
+            batch_input = batch_input.to(device)
+            batch_gt = batch_gt.to(device)
+            feat = model(batch_input)
+            all_feats.append(feat)
+            all_gts.append(batch_gt)
+    all_feats = torch.cat(all_feats)
+    all_gts = torch.cat(all_gts)
+    return all_feats, all_gts
 
 def oneshot_nn_eval(
     train_feats: torch.Tensor,
@@ -166,7 +151,7 @@ def oneshot_nn_eval(
         support_idxs = []
         support_labels = []
         for c in range(num_classes):
-            idxs = class_to_indices[c].numpy()
+            idxs = class_to_indices[c].cpu().numpy()
             chosen = rng.choice(idxs)
             support_idxs.append(chosen)
             support_labels.append(c)
@@ -265,7 +250,7 @@ def main():
     device = args.device if torch.cuda.is_available() else "cpu"
 
     print("=" * 60)
-    print(f"[INFO] NTU -> NW-UCLA 1-shot eval (training-free) with CascadeFormer on {device}")
+    print(f"[INFO] NTU -> NW-UCLA 1-shot eval (training-free) with MotionBert on {device}")
     print("=" * 60)
     data_path = "N-UCLA_processed/"
     train_label_path = data_path + "train_label.pkl"
@@ -326,13 +311,41 @@ def main():
         collate_fn=skateformer_collate_fn,
     )
 
-    model_wrapper = CascadeFormerWrapper(device=device)
+    chk_filename = os.path.join("action_checkpoints/MotionBert", "best_epoch.bin")
+    print('Loading backbone', chk_filename)
+    checkpoint = torch.load(chk_filename, map_location=lambda storage, loc: storage)
+    raw_state: OrderedDict = checkpoint["model"]
 
-    # 3) Extract UCLA train/test embeddings from frozen NTU model
+    # Build a state dict only for the MotionBert backbone
+    backbone_state = OrderedDict()
+    for k, v in raw_state.items():
+        # strip "module"
+        if k.startswith("module.backbone."):
+            k = k[len("module.backbone."):]
+            backbone_state[k] = v
+
+    # print(backbone_state.keys())
+
+    model_backbone = load_backbone()  # this should create a DSTformer
+    model_backbone.load_state_dict(backbone_state, strict=True)
+    model_wrapper = ActionNet(
+        backbone=model_backbone,
+        dim_rep=512, 
+        dropout_ratio=0.5, 
+        version='embed',      # 🔥 use embed head for feature extraction (NOT a classification head)
+        hidden_dim=2048, 
+        num_joints=17
+    ).to(device)
+    model_wrapper.eval()
+
     print("[INFO] Extracting train features...")
-    train_feats, train_labels = extract_feats_ucla(train_loader, model_wrapper, device)
+    train_feats, train_labels = extract_feats(train_loader, model_wrapper, device)
     print("[INFO] Extracting test features...")
-    test_feats, test_labels   = extract_feats_ucla(test_loader, model_wrapper, device)
+    test_feats, test_labels = extract_feats(test_loader, model_wrapper, device)
+    train_feats = train_feats.cpu()
+    train_labels = train_labels.cpu()
+    test_feats  = test_feats.cpu()
+    test_labels = test_labels.cpu()
 
     # 4) Run 1-shot nearest neighbor eval
     mean_acc, std_acc = oneshot_nn_eval(
@@ -345,7 +358,7 @@ def main():
     )
 
     print("=" * 60)
-    print(f"[RESULT] NTU -> NW-UCLA 1-shot (training-free, CascadeFormer embedding): "
+    print(f"[RESULT] NTU -> NW-UCLA 1-shot (training-free, MotionBert embedding): "
           f"{mean_acc*100:.2f}% ± {std_acc*100:.2f}%")
     print("=" * 60)
 
@@ -360,7 +373,7 @@ def main():
         k_shot=5,
     )
     print("=" * 60)
-    print(f"[RESULT] NTU -> NW-UCLA 5-shot (training-free, CascadeFormer embedding): "
+    print(f"[RESULT] NTU -> NW-UCLA 5-shot (training-free, MotionBert embedding): "
           f"{mean_acc*100:.2f}% ± {std_acc*100:.2f}%")
     print("=" * 60)
 

@@ -41,3 +41,6 @@ denoised_data/
 *.ckpt
 vectorstores/
 vids/
+*.bin
+*.kb
+incidents_db.kb

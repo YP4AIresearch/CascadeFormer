@@ -4,6 +4,7 @@ import math
 import warnings
 import numpy as np
 from collections import OrderedDict
+from functools import partial
 
 
 def drop_path(x, drop_prob: float = 0., training: bool = False):
@@ -383,12 +384,10 @@ class DSTformer(nn.Module):
     def get_representation(self, x):
         return self.forward(x, return_rep=True)
 
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        x: [B, F, J, C]
-        Returns: [B, dim_rep] (global pooled representation)
-        """
-        rep = self.get_representation(x)        # [B, F, J, dim_rep]
-        rep = rep.mean(dim=(1, 2))              # global average pool over time & joints
-        return rep
-    
+
+
+def load_backbone():
+    model_backbone = DSTformer(dim_in=3, dim_out=3, dim_feat=512, dim_rep=512, 
+                                   depth=5, num_heads=8, mlp_ratio=2, norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+                                   maxlen=243, num_joints=17)
+    return model_backbone
