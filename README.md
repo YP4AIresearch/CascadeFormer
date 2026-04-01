@@ -7,7 +7,7 @@
 
 ## News/Updates
 
-- [March 31, 2026] paper is accepted at [ICPR 2026](https://icpr2026.org) 🥳🎉!
+- [March 31, 2026] paper is accepted at ICPR 2026 🥳🎉!
 - [August 31, 2025] paper available on [arXiv](https://arxiv.org/abs/2509.00692)!
 - [July 19, 2025] model checkpoints are publicly available on [HuggingFace](https://huggingface.co/YusenPeng/CascadeFormerCheckpoints) for further analysis/application!
 
